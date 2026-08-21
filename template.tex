@@ -1,0 +1,288 @@
+%==============================================================================
+% Template de Write-Up de CTF
+% Materia : CIC0087 - Topicos Avancados em Computadores - Turma 04 - 2026/2
+% Depto.  : Departamento de Ciencias da Computacao
+% Baseado na "Metodologia para Construcao de Write-Ups em CTF"
+%
+% Compilacao:  pdflatex template.tex   (rodar 2x para atualizar o Sumario)
+%==============================================================================
+\documentclass[12pt,a4paper]{article}
+
+%------------------------- Codificacao e idioma -------------------------------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazil]{babel}
+
+%------------------------- Fonte Times New Roman ------------------------------
+\usepackage{newtxtext}   % corpo em Times
+\usepackage{newtxmath}   % matematica em Times
+
+%------------------------- Margens (minimo 2 cm) ------------------------------
+\usepackage[a4paper,margin=2cm,headheight=15pt,includehead,includefoot]{geometry}
+
+%------------------------- Utilitarios ----------------------------------------
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{float}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage{listings}
+\usepackage[most]{tcolorbox}
+\usepackage{caption}
+\usepackage{enumitem}
+\usepackage{setspace}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  urlcolor=blue!60!black,
+  citecolor=black
+}
+\onehalfspacing
+
+%============================= METADADOS =======================================
+% Preencha os campos abaixo para cada write-up.
+\newcommand{\desafioNome}{RootMe}          % ex.: "Máquina Codify"
+\newcommand{\plataforma}{TryHackMe}                % ex.: HackTheBox / TryHackMe / Hacking Club
+\newcommand{\dificuldade}{Fácil}              % ex.: Fácil / Médio / Difícil
+\newcommand{\dataResolucao}{19/08/2026}             % data de resolucao
+\newcommand{\autorNome}{Luís Eduardo Curi Serra}                   % autor do write-up
+
+% Dados academicos (fixos para a disciplina)
+\newcommand{\materia}{CIC0087 -- Tópicos Avançados em Computadores -- Turma 04 -- 2026/2}
+\newcommand{\departamento}{Departamento de Ciências da Computação}
+\newcommand{\matricula}{251033574}
+\newcommand{\professor}{Roberto Rodrigues Filho}
+\newcommand{\universidade}{Universidade de Brasília}
+%===============================================================================
+
+%------------------------- Cabecalho e rodape ---------------------------------
+% Regra da metodologia: cabecalho/rodape com nome do desafio e autor + numeracao.
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{\small\itshape \desafioNome}
+\rhead{\small\itshape \autorNome}
+\lfoot{\small \materia}
+\rfoot{\small Página \thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0.4pt}
+
+%------------------------- Estilo dos blocos de codigo ------------------------
+% Fonte monoespacada com fundo destacado (cinza claro).
+\definecolor{codebg}{gray}{0.95}
+\definecolor{codeframe}{gray}{0.75}
+\definecolor{cmt}{RGB}{100,120,100}
+\definecolor{kw}{RGB}{0,0,150}
+\definecolor{str}{RGB}{150,50,50}
+
+\lstdefinestyle{shell}{
+  backgroundcolor=\color{codebg},
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{kw}\bfseries,
+  commentstyle=\color{cmt}\itshape,
+  stringstyle=\color{str},
+  frame=single,
+  rulecolor=\color{codeframe},
+  breaklines=true,
+  breakatwhitespace=false,
+  postbreak=\mbox{\textcolor{codeframe}{$\hookrightarrow$}\space},
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false,
+  tabsize=2,
+  captionpos=b,
+  xleftmargin=0.4em,
+  xrightmargin=0.4em,
+  aboveskip=1em,
+  belowskip=1em,
+}
+\lstset{style=shell}
+
+% Atalhos: comando de terminal e bloco de output
+\newcommand{\cmd}[1]{\lstinline[style=shell]|#1|}
+
+% Ambiente para OUTPUT (fundo levemente diferente, sem numeracao de T}          linha)
+\lstdefinestyle{output}{
+  style=shell,
+  backgroundcolor=\color{gray!8},
+  basicstyle=\ttfamily\footnotesize,
+  keywordstyle=\ttfamily,
+}
+
+% Caixa de destaque para placeholders/observacoes de OPSEC
+\newtcolorbox{nota}{
+  colback=yellow!8, colframe=yellow!40!black,
+  boxrule=0.5pt, arc=2pt, left=6pt, right=6pt, top=4pt, bottom=4pt
+}
+
+%===============================================================================
+\begin{document}
+
+%============================= 2.1 CAPA =========================================
+\begin{titlepage}
+  \thispagestyle{empty}
+  \centering
+  {\scshape \universidade \par}
+  {\scshape \departamento \par}
+  \vspace{0.4cm}
+  {\small \materia \par}
+  \vspace{2.5cm}
+
+  \rule{\linewidth}{0.4pt}\par
+  \vspace{0.6cm}
+  {\huge \bfseries Write-Up: \desafioNome \par}
+  \vspace{0.4cm}
+  {\large Segurança Ofensiva --- Capture The Flag \par}
+  \vspace{0.6cm}
+  \rule{\linewidth}{0.4pt}\par
+
+  \vspace{2.0cm}
+  \begin{tabular}{rl}
+    \textbf{Plataforma:}       & \plataforma       \\[4pt]
+    \textbf{Dificuldade:}      & \dificuldade      \\[4pt]
+    \textbf{Data de resolução:}& \dataResolucao    \\
+  \end{tabular}
+
+  \vfill
+
+  \begin{tabular}{rl}
+    \textbf{Autor:}     & \autorNome  \\[4pt]
+    \textbf{Matrícula:} & \matricula  \\[4pt]
+    \textbf{Professor:} & \professor  \\
+  \end{tabular}
+
+  \vspace{1.2cm}
+  {\small \dataResolucao \par}
+\end{titlepage}
+
+%============================= 2.2 SUMARIO ======================================
+\newpage
+\tableofcontents
+\thispagestyle{fancy}
+\newpage
+
+%============================= 2.3 VISAO GERAL ==================================
+\section{Visão Geral}
+% Paragrafo descrevendo o vetor principal de ataque, SEM spoiler detalhado.
+% Deve responder: o que e o desafio, qual a superficie de ataque explorada e
+% qual foi o caminho geral ate o objetivo.
+Descreva aqui, em um parágrafo, o vetor principal de ataque sem detalhar o
+passo a passo. Explique \textbf{o que é} o desafio, qual a \textbf{superfície de
+ataque} explorada e qual foi o \textbf{caminho geral} percorrido até a flag.
+
+%============================= 2.4 RECONHECIMENTO ===============================
+\section{Reconhecimento}
+% Resultado da enumeracao EXTERNA: portas abertas, servicos, versoes,
+% tecnologias. Incluir comandos usados e trechos de output relevantes.
+% Nao incluir informacoes obtidas apos o foothold inicial.
+Enumeração externa do alvo: portas abertas, serviços, versões e tecnologias
+identificadas. Cada comando deve estar acompanhado do porquê foi executado.
+
+\subsection{Varredura de portas}
+\begin{lstlisting}[language=bash,caption={Varredura inicial de portas e serviços com Nmap.}]
+nmap -sC -sV -p- --min-rate 5000 -oN nmap/initial <TARGET_IP>
+\end{lstlisting}
+
+Trecho relevante do output (truncado):
+\begin{lstlisting}[style=output,caption={Serviços expostos identificados na varredura.}]
+PORT   STATE SERVICE VERSION
+22/tcp open  ssh     OpenSSH ...
+80/tcp open  http    ...
+\end{lstlisting}
+
+\subsection{Enumeração de serviços}
+Descreva a enumeração dirigida aos serviços encontrados (web, SMB, DNS, etc.)
+e os achados que motivaram a fase de exploração.
+
+%============================= 2.5 EXPLORACAO ===================================
+\section{Exploração}
+% Descricao tecnica do vetor de entrada. Incluir o raciocinio que levou a
+% identificacao da vulnerabilidade, payloads/scripts (comentados), exploits
+% publicos e os outputs que confirmam o acesso. Cada passo JUSTIFICADO.
+Vetor de entrada e obtenção do \emph{foothold} inicial. Explique o raciocínio
+que levou à identificação da vulnerabilidade, e não apenas os comandos.
+
+\subsection{Identificação da vulnerabilidade}
+Justifique como a vulnerabilidade foi descoberta a partir dos achados do
+reconhecimento.
+
+\subsection{Payload / Exploit}
+\begin{lstlisting}[language=bash,caption={Payload utilizado para explorar a falha (comentado).}]
+# Objetivo: <o que este payload faz>
+# Motivo:  <por que ele funciona contra o alvo>
+curl -s "http://<TARGET_IP>/..." --data "<PAYLOAD>"
+\end{lstlisting}
+
+\subsection{Confirmação de acesso}
+\begin{lstlisting}[style=output,caption={Output que confirma a execução de comandos / shell obtido.}]
+id
+uid=1000(user) gid=1000(user) groups=1000(user)
+\end{lstlisting}
+
+%======================== 2.6 MOVIMENTACAO LATERAL =============================
+\section{Movimentação Lateral}
+% (Se aplicavel) Aplicavel quando ha multiplos usuarios ou pivoting entre
+% servicos. Mesmo padrao da secao anterior. Caso nao se aplique, remova a secao.
+\textit{Aplicável quando há múltiplos usuários ou \emph{pivoting} entre
+serviços. Caso não se aplique a este desafio, remova esta seção.}
+
+\subsection{Enumeração pós-foothold}
+Descreva os credenciais/arquivos/serviços internos encontrados que permitiram
+mudar de contexto de usuário.
+
+\begin{lstlisting}[language=bash,caption={Coleta de credenciais reutilizáveis.}]
+cat /home/user/config.php   # senha em texto claro -> <PASSWORD>
+su outro_usuario            # reutilizacao de credencial
+\end{lstlisting}
+
+%======================== 2.7 ESCALADA DE PRIVILEGIOS ==========================
+\section{Escalada de Privilégios}
+% Vetor de privesc, o processo de enumeracao local que o revelou
+% (linpeas, sudo -l, capabilities, ...) e a exploracao. Incluir o comando
+% final que comprova o acesso root/SYSTEM.
+Vetor de \emph{privilege escalation}, a enumeração local que o revelou e a
+exploração realizada.
+
+\subsection{Enumeração local}
+\begin{lstlisting}[language=bash,caption={Enumeração de vetores de privesc.}]
+sudo -l
+getcap -r / 2>/dev/null
+./linpeas.sh
+\end{lstlisting}
+
+\subsection{Exploração e obtenção de root}
+Justifique o vetor identificado e a técnica aplicada.
+
+\begin{lstlisting}[style=output,caption={Comando final que comprova o acesso privilegiado.}]
+# id
+uid=0(root) gid=0(root) groups=0(root)
+\end{lstlisting}
+
+%============================= 2.8 CONCLUSAO ====================================
+\section{Conclusão}
+% Resumo tecnico de 3 a 5 linhas sintetizando a cadeia completa,
+% do reconhecimento a flag.
+Resumo técnico de 3 a 5 linhas sintetizando a cadeia de exploração completa,
+do reconhecimento até a flag: qual foi o vetor inicial, como se deu a
+movimentação/escalada e qual falha central permitiu comprometer o alvo.
+
+%============================= 2.9 REFERENCIAS ==================================
+\section{Referências}
+% Fontes utilizadas: links dos repositorios dos exploits publicos e links das
+% CVEs correspondentes.
+\begin{itemize}[leftmargin=1.5em]
+  \item CVE-XXXX-YYYY --- \url{https://nvd.nist.gov/vuln/detail/CVE-XXXX-YYYY}
+  \item Exploit público --- \url{https://github.com/<autor>/<repo>}
+  \item Documentação / referência técnica --- \url{https://...}
+\end{itemize}
+
+%------------------------- Lembrete de OPSEC (remover) ------------------------
+\begin{nota}
+\small\textbf{Antes de entregar, verifique:} substitua IPs, senhas, hashes e
+tokens por placeholders (\texttt{<TARGET\_IP>}, \texttt{<PASSWORD>},
+\texttt{<HASH>}); \textbf{não} exiba flags no corpo do documento
+(use \texttt{<FLAG>}); trunque outputs longos; toda imagem deve ter legenda; e
+todo comando deve vir acompanhado da justificativa. Remova esta caixa.
+\end{nota}
+
+\end{document}
