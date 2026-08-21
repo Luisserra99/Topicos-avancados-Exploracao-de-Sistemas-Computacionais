@@ -157,21 +157,21 @@
 \section{Visão Geral}
 \textbf{RootMe} é uma máquina Linux de dificuldade \emph{fácil} que expõe um
 servidor web Apache. A superfície de ataque explorada é a aplicação web:
-um painel de \emph{upload} sem qualquer validação de tipo/extensão de arquivo
+um painel de \emph{upload} sem validação adequada de tipo/extensão de arquivo
 permite subir uma \emph{webshell} PHP, que é servida a partir de um diretório
 público e executada, concedendo execução remota de código como o usuário
-\texttt{www-data}. A partir desse \emph{foothold}, a enumeração local revela um
+\texttt{www-data}. Em seguida, a enumeração local revela um
 interpretador Python com bit \emph{SUID} habilitado, o que é abusado para
 obter um \emph{shell} como \texttt{root}. O caminho geral foi:
 reconhecimento (Nmap + Gobuster) $\rightarrow$ \emph{upload} de \emph{reverse
 shell} $\rightarrow$ acesso como \texttt{www-data} $\rightarrow$ escalada via
-binário SUID $\rightarrow$ \texttt{root}.
+progama com SUID $\rightarrow$ \texttt{root}.
 
 %============================= 2.4 RECONHECIMENTO ===============================
 \section{Reconhecimento}
 
 \subsection{Varredura de portas}
-A varredura inicial identifica quais serviços estão expostos e suas versões,
+A varredura inicial identifica quais serviços estão expostos e suas portas,
 orientando as fases seguintes.
 
 \begin{lstlisting}[language=bash,caption={Varredura de portas e serviços com Nmap.}]
@@ -210,7 +210,8 @@ enumeração.
 \end{figure}
 
 Para mapear diretórios não referenciados, foi executado o Gobuster com a
-\emph{wordlist} \texttt{common.txt}. O objetivo é descobrir pontos de entrada
+\emph{wordlist} \texttt{common.txt} padrão do próprio. \emph{Kali Linux}. 
+O objetivo é descobrir pontos de entrada
 ocultos (áreas administrativas, diretórios de \emph{upload}, etc.).
 
 \begin{lstlisting}[language=bash,caption={Enumeração de diretórios com Gobuster.}]
@@ -242,18 +243,17 @@ uploads        (Status: 301)   <-- arquivos enviados (publico)
 
 \subsection{Identificação da vulnerabilidade}
 O diretório \texttt{/panel} apresenta um formulário ``\emph{Select a file to
-upload}''. Testes de envio mostram que a aplicação \textbf{não valida a
-extensão nem o tipo (MIME) do arquivo} e armazena o resultado em
+upload}''. Testes de envio mostram que a aplicação \textbf{valida a extensão 
+do arquivo php e bloqueia, mas permite o upload de php5} e armazena o resultado em
 \texttt{/uploads}, que é servido diretamente pelo Apache. Como o servidor
 interpreta arquivos PHP (inclusive a extensão alternativa \texttt{.php5}),
-é possível enviar uma \emph{webshell} e obter execução remota de código
-(\emph{unrestricted file upload $\rightarrow$ RCE}).
+é possível enviar uma \emph{webshell} e obter execução remota de código.
 
 \subsection{Payload / Exploit}
 Foi utilizada a \emph{reverse shell} em PHP do \emph{pentestmonkey}, ajustando
 o IP do atacante (obtido via \cmd{ifconfig}, interface \texttt{tun0}) e a porta
-de escuta. O arquivo foi renomeado para \texttt{.php5} a fim de contornar um
-eventual filtro sobre a extensão \texttt{.php}, mantendo a execução como PHP.
+de escuta. O arquivo foi renomeado para \texttt{.php5} a fim de contornar o filtro 
+sobre a extensão \texttt{.php}, mantendo a execução como PHP.
 
 \begin{lstlisting}[language=bash,caption={Preparação do payload (comentado).}]
 # Objetivo: obter uma reverse shell PHP no alvo.
@@ -318,9 +318,9 @@ cat user.txt        # -> <FLAG>
 
 \subsection{Enumeração local}
 Como \texttt{www-data}, procuram-se binários com o bit \emph{SUID} (permissão
-\texttt{4000}), que executam com os privilégios do dono do arquivo. Se algum
-interpretador ou binário perigoso estiver marcado como SUID de \texttt{root},
-ele pode ser abusado para elevar privilégios.
+\texttt{4000}), que executam com os privilégios do dono do arquivo partindo do raiz.
+Se algum interpretador ou binário executável estiver marcado como SUID 
+de \texttt{root}, ele pode ser abusado para elevar privilégios.
 
 \begin{lstlisting}[language=bash,caption={Busca por binários SUID (erros descartados).}]
 find / -perm -4000 -type f 2>/dev/null
@@ -377,12 +377,11 @@ cat root.txt        # -> <FLAG>
 %============================= 2.7 CONCLUSAO ====================================
 \section{Conclusão}
 O comprometimento resultou do encadeamento de duas más configurações. Primeiro,
-o painel web em \texttt{/panel} permitia \emph{upload} irrestrito de arquivos:
+o painel web em \texttt{/panel} permitia \emph{upload} irrestrito de formatos de arquivos:
 o envio de uma \emph{webshell} \texttt{.php5}, executável a partir do diretório
 público \texttt{/uploads}, concedeu execução remota de código como
 \texttt{www-data}. Em seguida, o binário \texttt{/usr/bin/python2.7} estava
-indevidamente marcado como \emph{SUID root}; abusá-lo via GTFOBins
-(\texttt{sh -p}) elevou o acesso a \texttt{root}. A falha central foi a
+indevidamente marcado como \emph{SUID root}; abusá-lo via (\texttt{sh -p}) elevou o acesso a \texttt{root}. A falha central foi a
 ausência de validação de \emph{upload}, agravada por um interpretador com bit
 SUID desnecessário.
 
