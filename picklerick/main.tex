@@ -157,7 +157,7 @@
   \end{tabular}
 
   \vspace{1.2cm}
-  {\small \dataResolucao \par}
+  {\small \today \par}
 \end{titlepage}
 
 %============================= 2.2 SUMARIO ======================================
@@ -168,17 +168,17 @@
 
 %============================= 2.3 VISAO GERAL ==================================
 \section{Visão Geral}
-\textbf{Pickle Rick} é uma máquina Linux de dificuldade \emph{fácil}, temática
-da série \emph{Rick and Morty}, que expõe um servidor web Apache. A superfície
+\textbf{Pickle Rick} é uma máquina Linux de dificuldade \emph{fácil}, 
+que expõe um servidor web Apache. A superfície
 de ataque explorada é integralmente a aplicação web: as credenciais de acesso
-ficam \emph{vazadas} em recursos públicos --- o nome de usuário no código-fonte
-da página inicial e a senha em \texttt{/robots.txt} ---, o que permite
+ficam \emph{vazadas} em recursos públicos, o nome de usuário no código-fonte
+da página inicial e a senha em \texttt{/robots.txt}, o que permite
 autenticar em um \emph{Portal} que disponibiliza um \emph{Command Panel}: um
 formulário que executa comandos arbitrários do sistema operacional (execução
 remota de código por \emph{design}). A partir dessa execução, obtém-se um
 \emph{reverse shell} como o usuário \texttt{www-data}. A enumeração local revela
 uma configuração perigosa do \texttt{sudo} (\texttt{www-data} pode executar
-qualquer comando como \texttt{root} sem senha), abusada para obter \texttt{root}.
+qualquer comando como \texttt{root} sem senha), utilizada para escalação de privilégio \texttt{root}.
 O objetivo da sala é coletar três \emph{ingredientes secretos} (as \emph{flags}),
 recolhidos ao longo do caminho. O fluxo geral foi: reconhecimento
 (Nmap + Gobuster) $\rightarrow$ coleta de credenciais (código-fonte +
