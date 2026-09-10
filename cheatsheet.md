@@ -191,6 +191,9 @@ Ferramentas locais (Kali):
 hashid -m '<hash>'      # -m mostra o modo (algoritmo) do hashcat
 hash-identifier         # interativo
 ```
+Hash-examples:
+- https://hashcat.net/wiki/doku.php?id=example_hashes
+
 
 Sites online:
 - CyberChef — https://gchq.github.io/CyberChef/ (Magic detecta e decoda)
@@ -242,6 +245,35 @@ hashcat -m 1800 -a 0 hash.txt /usr/share/wordlists/rockyou.txt
 **Máscaras** (para `-a 3`):
 ```
 ?l = a-z    ?u = A-Z    ?d = 0-9    ?s = símbolos    ?a = todos
+```
+
+### Máscara customizada (`-1 -2 -3 -4`)
+
+Quando cada posição da senha pode ser mais de um conjunto (ex.: dígito **ou** maiúscula **ou** minúscula), define um charset próprio com `-1` e usa `?1` na máscara.
+
+```bash
+# cada posição = [0-9] ou [A-Z] ou [a-z], senha de 6 chars
+hashcat -m 0 -a 3 add3.txt -1 ?d?u?l ?1?1?1?1?1?1
+```
+- `-1 ?d?u?l` = charset 1 é a união de dígitos + maiúsculas + minúsculas
+- `?1` na máscara = "use o charset 1 aqui" (equivale ao seu `?dul` da ideia inicial)
+- Dá pra ter até 4 charsets: `-1 -2 -3 -4` → referenciados por `?1 ?2 ?3 ?4`
+
+```bash
+# exemplo com 2 charsets: 1ª letra maiúscula, resto minúsculo, 2 dígitos no fim
+hashcat -m 0 -a 3 hash.txt -1 ?u -2 ?l ?1?2?2?2?2?2?d?d
+
+# charset literal (só esses caracteres)
+hashcat -m 0 -a 3 hash.txt -1 abcdef0123456789 ?1?1?1?1?1?1
+
+# combinando com chars fixos (prefixo conhecido "CTF-")
+hashcat -m 0 -a 3 hash.txt -1 ?d?u?l CTF-?1?1?1?1
+```
+
+### Tamanho variável — `--increment`
+```bash
+# testa senhas de 1 até 6 chars usando o charset custom
+hashcat -m 0 -a 3 hash.txt -1 ?d?u?l --increment --increment-min 1 --increment-max 6 ?1?1?1?1?1?1
 ```
 
 ### Ver o resultado
