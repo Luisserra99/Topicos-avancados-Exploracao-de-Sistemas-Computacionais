@@ -1,0 +1,546 @@
+%==============================================================================
+% Write-Up de CTF - Crack The Hash (TryHackMe)
+% Materia : CIC0087 - Topicos Avancados em Computadores - Turma 04 - 2026/2
+% Depto.  : Departamento de Ciencias da Computacao
+% Baseado na "Metodologia para Construcao de Write-Ups em CTF"
+%
+% Compilacao:  pdflatex main.tex   (rodar 2x para atualizar o Sumario)
+%==============================================================================
+\documentclass[12pt,a4paper]{article}
+
+%------------------------- Codificacao e idioma -------------------------------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazil]{babel}
+
+%------------------------- Fonte Times New Roman ------------------------------
+\usepackage{newtxtext}   % corpo em Times
+\usepackage{newtxmath}   % matematica em Times
+
+%------------------------- Margens (minimo 2 cm) ------------------------------
+\usepackage[a4paper,margin=2cm,headheight=15pt,includehead,includefoot]{geometry}
+
+%------------------------- Utilitarios ----------------------------------------
+\usepackage{graphicx}
+\graphicspath{{img/}{./img/}}
+\usepackage{xcolor}
+\usepackage{float}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage{listings}
+\usepackage[most]{tcolorbox}
+\usepackage{caption}
+\usepackage{enumitem}
+\usepackage{setspace}
+\usepackage{array}
+\usepackage{longtable}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  urlcolor=blue!60!black,
+  citecolor=black
+}
+\onehalfspacing
+
+%============================= METADADOS =======================================
+\newcommand{\desafioNome}{Crack The Hash}
+\newcommand{\plataforma}{TryHackMe}
+\newcommand{\dificuldade}{Fácil}
+\newcommand{\dataResolucao}{10/09/2026}
+\newcommand{\autorNome}{Luís Eduardo Curi Serra}
+
+% Dados academicos (fixos para a disciplina)
+\newcommand{\materia}{CIC0087 -- Tópicos Avançados em Computadores -- Turma 04 -- 2026/2}
+\newcommand{\departamento}{Departamento de Ciências da Computação}
+\newcommand{\matricula}{251033574}
+\newcommand{\professor}{Roberto Rodrigues Filho}
+\newcommand{\universidade}{Universidade de Brasília}
+%===============================================================================
+
+%------------------------- Cabecalho e rodape ---------------------------------
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{\small\itshape \desafioNome}
+\rhead{\small\itshape \autorNome}
+\lfoot{\small \materia}
+\rfoot{\small Página \thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0.4pt}
+
+%------------------------- Estilo dos blocos de codigo ------------------------
+\definecolor{codebg}{gray}{0.95}
+\definecolor{codeframe}{gray}{0.75}
+\definecolor{cmt}{RGB}{100,120,100}
+\definecolor{kw}{RGB}{0,0,150}
+\definecolor{str}{RGB}{150,50,50}
+
+\lstdefinestyle{shell}{
+  backgroundcolor=\color{codebg},
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{kw}\bfseries,
+  commentstyle=\color{cmt}\itshape,
+  stringstyle=\color{str},
+  frame=single,
+  rulecolor=\color{codeframe},
+  breaklines=true,
+  breakatwhitespace=false,
+  postbreak=\mbox{\textcolor{codeframe}{$\hookrightarrow$}\space},
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false,
+  tabsize=2,
+  captionpos=b,
+  xleftmargin=0.4em,
+  xrightmargin=0.4em,
+  aboveskip=1em,
+  belowskip=1em,
+}
+\lstset{style=shell}
+
+% Atalho: comando de terminal em linha
+\newcommand{\cmd}[1]{\lstinline[style=shell]|#1|}
+
+% Ambiente para OUTPUT (fundo levemente diferente, fonte menor)
+\lstdefinestyle{output}{
+  style=shell,
+  backgroundcolor=\color{gray!8},
+  basicstyle=\ttfamily\footnotesize,
+  keywordstyle=\ttfamily,
+}
+
+%------------ Caixa de "becos sem saida" (tentativas sem sucesso) --------------
+\definecolor{deadendbg}{RGB}{255,248,240}
+\definecolor{deadendframe}{RGB}{193,108,44}
+\newtcolorbox{becosemsaida}[1][Tentativas sem sucesso (becos sem saída)]{%
+  enhanced, breakable,
+  colback=deadendbg, colframe=deadendframe,
+  colbacktitle=deadendframe, coltitle=white,
+  boxrule=0.6pt, arc=2pt,
+  left=8pt, right=8pt, top=6pt, bottom=6pt,
+  fonttitle=\bfseries\small,
+  title={#1}%
+}
+
+%===============================================================================
+\begin{document}
+
+%============================= 2.1 CAPA =========================================
+\begin{titlepage}
+  \thispagestyle{empty}
+  \centering
+  {\scshape \universidade \par}
+  {\scshape \departamento \par}
+  \vspace{0.4cm}
+  {\small \materia \par}
+  \vspace{2.5cm}
+
+  \rule{\linewidth}{0.4pt}\par
+  \vspace{0.6cm}
+  {\huge \bfseries Write-Up: \desafioNome \par}
+  \vspace{0.4cm}
+  {\large Segurança Ofensiva --- Capture The Flag \par}
+  \vspace{0.6cm}
+  \rule{\linewidth}{0.4pt}\par
+
+  \vspace{2.0cm}
+  \begin{tabular}{rl}
+    \textbf{Plataforma:}       & \plataforma       \\[4pt]
+    \textbf{Dificuldade:}      & \dificuldade      \\[4pt]
+    \textbf{Data de resolução:}& \dataResolucao    \\
+  \end{tabular}
+
+  \vfill
+
+  \begin{tabular}{rl}
+    \textbf{Autor:}     & \autorNome  \\[4pt]
+    \textbf{Matrícula:} & \matricula  \\[4pt]
+    \textbf{Professor:} & \professor  \\
+  \end{tabular}
+
+  \vspace{1.2cm}
+  {\small \today \par}
+\end{titlepage}
+
+%============================= 2.2 SUMARIO ======================================
+\newpage
+\tableofcontents
+\thispagestyle{fancy}
+\newpage
+
+%============================= 2.3 VISAO GERAL ==================================
+\section{Visão Geral}
+\textbf{Crack The Hash} é uma sala de \emph{criptografia} do TryHackMe, de
+dificuldade \emph{fácil}. Diferentemente de uma máquina, não há serviço a
+explorar nem escalada de privilégio: o desafio entrega uma série de \emph{hashes}
+e o objetivo é \textbf{identificar o algoritmo} de cada um e \textbf{recuperar o
+texto-claro}. A sala está dividida em dois níveis de dificuldade crescente, além
+disso foram resolvidos \textbf{hashes adicionais} propostos como exercício complementar. A Tabela~\ref{tab:resumo}
+
+O fluxo aplicado a cada hash é sempre o mesmo: (i) \textbf{identificar} o
+algoritmo pelo comprimento e formato do hash, com apoio de \texttt{hashid},
+\texttt{hash-identifier} e do \emph{Magic} do CyberChef; (ii) \textbf{mapear o
+modo} correspondente do \texttt{hashcat} (\cmd{-m}); e (iii) \textbf{atacar} com
+o ataque adequado (\cmd{-a}) --- dicionário (\texttt{rockyou.txt}), dicionário
+com regras de mutação, ou máscara/força-bruta quando há dica sobre o formato da
+senha. Como os hashes são a entrada pública do desafio e as senhas recuperadas
+são as próprias respostas didáticas da sala, ambos são exibidos em claro neste
+documento.
+
+%==================== 2.4 RECONHECIMENTO / FERRAMENTAS =========================
+\section{Reconhecimento: Identificação e Ferramentas}
+
+O ``reconhecimento'' de um desafio de \emph{cracking} consiste em determinar,
+para cada hash, qual algoritmo o gerou.
+O comprimento em caracteres hexadecimais é a primeira pista (32 $\rightarrow$
+família MD5/MD4; 40 $\rightarrow$ SHA-1; 64 $\rightarrow$ SHA-256); prefixos como
+\cmd{$2y$} (bcrypt) e \cmd{$6$} (sha512crypt) são identificadores diretos do
+formato.
+
+\begin{itemize}[leftmargin=1.4em,itemsep=2pt,topsep=2pt]
+  \item \textbf{hashid} --- lista os candidatos de algoritmo e já informa o modo
+        (\cmd{-m}) do \texttt{hashcat}: \cmd{hashid -m '<hash>'}.
+  \item \textbf{hash-identifier} --- ferramenta interativa equivalente.
+  \item \textbf{CyberChef (\emph{Magic})} --- detecta o tipo e sugere a família
+        de algoritmos a partir do formato.
+\end{itemize}
+
+Um ponto essencial é que ferramentas de identificação retornam \emph{várias}
+possibilidades para um mesmo comprimento (p.\,ex., um hash de 32 hex pode ser
+MD5, MD4, NTLM, RIPEMD-128 etc.). O procedimento correto é testar os candidatos
+em ordem de probabilidade até um deles quebrar --- foi exatamente o que
+distinguiu os casos mais trabalhosos (Nível 1 \#5 e Nível 2 \#2).
+
+\subsection{Ferramenta de quebra --- hashcat}
+A quebra propriamente dita foi feita com \texttt{hashcat}. Os dois parâmetros
+centrais são o \textbf{modo} (\cmd{-m}, o algoritmo) e o \textbf{tipo de ataque}
+(\cmd{-a}). A Tabela~\ref{tab:modos} reúne os modos efetivamente usados no
+desafio.
+
+\begin{table}[H]
+  \centering
+  \caption{Modos de \texttt{hashcat} utilizados neste desafio.}
+  \label{tab:modos}
+  \begin{tabular}{>{\ttfamily}c l l}
+    \hline
+    \textbf{-m} & \textbf{Algoritmo} & \textbf{Onde apareceu} \\
+    \hline
+    0    & MD5                         & N1\#1, Add\#1 \\
+    100  & SHA-1                       & N1\#2, Add\#2 \\
+    900  & MD4                         & N1\#5, Add\#3 \\
+    1000 & NTLM                        & N2\#2 \\
+    1400 & SHA-256                     & N1\#3, N2\#1, Add\#5 \\
+    1800 & sha512crypt (\$6\$)         & N2\#3 \\
+    3200 & bcrypt (\$2*\$)             & N1\#4 \\
+    160  & HMAC-SHA1 (chave = sal)     & N2\#4, Add\#4 \\
+    \hline
+  \end{tabular}
+\end{table}
+
+\noindent Tipos de ataque (\cmd{-a}) empregados: \textbf{0} (dicionário),
+\textbf{3} (máscara / força-bruta). Recursos auxiliares:
+
+\begin{itemize}[leftmargin=1.4em,itemsep=2pt,topsep=2pt]
+  \item \textbf{Dicionário:} \cmd{/usr/share/wordlists/rockyou.txt}.
+  \item \textbf{Regras} (\cmd{-r}): geram variações de cada palavra do dicionário
+        (maiúsculas, números no fim, \emph{leetspeak}), usadas quando a senha é
+        uma palavra comum mutada. Empregou-se \cmd{best66.rule}, nativo do \emph{Kali Linux}.
+  \item \textbf{Máscaras} (\cmd{-a 3}): \cmd{?d}=dígitos, \cmd{?l}=minúsculas,
+        \cmd{?u}=maiúsculas. Com \cmd{-1} define-se um \emph{charset} próprio
+        referenciado por \cmd{?1} --- útil quando cada posição pode ser de vários
+        conjuntos.
+  \item \textbf{Sal:} para hashes com sal, o \texttt{hashcat} recebe o par no
+        formato \cmd{hash:sal} (modos 110/120/160), ou o sal já vem embutido no
+        próprio hash (formato \cmd{$6$<sal>$<hash>}).
+  \item \textbf{Otimização} (\cmd{-O}): habilita o \emph{kernel} otimizado
+        (limita o tamanho da senha, mas acelera bastante).
+\end{itemize}
+
+%============================= 2.5 EXPLORACAO ===================================
+\section{Exploração: Quebra dos Hashes}
+
+Para cada hash apresenta-se: o valor de entrada, o algoritmo identificado e o
+respectivo modo, o comando de quebra e o texto-claro recuperado. Onde houve
+tentativas frustradas relevantes, elas são registradas em destaque, pois
+compõem o raciocínio de identificação.
+
+%------------------------------- NIVEL 1 --------------------------------------
+\subsection{Nível 1 --- (Task 1)}
+
+\begin{table}[H]
+  \centering
+  \caption{Resumo do Nível 1.}
+  \label{tab:n1}
+  \begin{tabular}{l l >{\ttfamily}c l l}
+    \hline
+    \textbf{Hash (abrev.)} & \textbf{Algoritmo} & \textbf{-m} & \textbf{Ataque} & \textbf{Texto-claro} \\
+    \hline
+    48bb\ldots ed4d   & MD5     & 0    & dicionário            & \texttt{easy} \\
+    CBFD\ldots 2A97   & SHA-1   & 100  & dicionário            & \texttt{password123} \\
+    1C8B\ldots 3032   & SHA-256 & 1400 & dicionário            & \texttt{letmein} \\
+    \$2y\$12\$\ldots  & bcrypt  & 3200 & dicionário (4 letras) & \texttt{bleh} \\
+    2794\ldots 3daa   & MD4     & 900  & dicionário + regras   & \texttt{Eternity22} \\
+    \hline
+  \end{tabular}
+\end{table}
+
+\subsubsection{\#1 --- MD5}
+Hash de 32 hex: \cmd{48bb6e862e54f2a795ffc4e541caed4d}. O CyberChef aponta a
+família MD (MD5, MD4, RIPEMD-128\ldots); começa-se pelo mais provável, MD5
+(\cmd{-m 0}), com dicionário.
+
+\begin{lstlisting}[language=bash,caption={Quebra do hash MD5 por dicionário.}]
+hashcat -m 0 -a 0 t1_1.txt /usr/share/wordlists/rockyou.txt
+\end{lstlisting}
+\noindent Texto-claro: \textbf{easy}.
+
+\subsubsection{\#2 --- SHA-1}
+Hash de 40 hex: \cmd{CBFDAC6008F9CAB4083784CBD1874F76618D2A97}. O comprimento
+identifica SHA-1 (\cmd{-m 100}).
+
+\begin{lstlisting}[language=bash,caption={Quebra do hash SHA-1 por dicionário.}]
+hashcat -m 100 -a 0 t1_2.txt /usr/share/wordlists/rockyou.txt
+\end{lstlisting}
+\noindent Texto-claro: \textbf{password123}.
+
+\subsubsection{\#3 --- SHA-256}
+Hash de 64 hex: \cmd{1C8BFE8F801D79745C4631D09FFF36C82AA37FC4CCE4FC946683D7B336B63032}.
+Comprimento típico de SHA-256 (\cmd{-m 1400}).
+
+\begin{lstlisting}[language=bash,caption={Quebra do hash SHA-256 por dicionário.}]
+hashcat -m 1400 -a 0 t1_3.txt /usr/share/wordlists/rockyou.txt
+\end{lstlisting}
+\noindent Texto-claro: \textbf{letmein}.
+
+\subsubsection{\#4 --- bcrypt}
+Hash \cmd{$2y$12$Dwt1BZj6pcyc3Dy1FWZ5ieeUznr71EeNkJkUlypTsgbX1H68wsRom}. O
+prefixo \cmd{$2y$} e o fator de custo \cmd{12} identificam \texttt{bcrypt}
+(\cmd{-m 3200}) via \texttt{hashid}. Por ser um algoritmo deliberadamente lento
+($2^{12}$ iterações por candidato), o dicionário completo é inviável em tempo
+hábil; por isso o \texttt{rockyou} foi filtrado para conter apenas palavras
+alfabéticas de \textbf{4 caracteres}, reduzindo drasticamente o espaço de busca.
+
+\begin{lstlisting}[language=bash,caption={Filtragem do dicionário e quebra do bcrypt.}]
+grep -xE '[A-Za-z]{4}' /usr/share/wordlists/rockyou.txt > words4.txt
+hashcat -m 3200 -a 0 t1_4.txt words4.txt
+\end{lstlisting}
+\noindent Texto-claro: \textbf{bleh}.
+
+\subsubsection{\#5 --- MD4}
+Hash de 32 hex: \cmd{279412f945939ba78ce0758d3fd83daa}. Foi o hash mais
+trabalhoso do Nível 1: o texto-claro (\textbf{Eternity22}) não está no
+\texttt{rockyou} puro e o algoritmo não é MD5. Após descartar MD5 e SHA-1,
+confirma-se \textbf{MD4} (\cmd{-m 900}); a senha é uma palavra do dicionário
+\emph{mutada}, recuperada com o dicionário mais o conjunto de regras
+\cmd{best66.rule}.
+
+\begin{lstlisting}[language=bash,caption={Quebra do hash MD4 com dicionário + regras.}]
+hashcat -m 900 -a 0 t1_5.txt /usr/share/wordlists/rockyou.txt \
+        -r /usr/share/hashcat/rules/best66.rule
+\end{lstlisting}
+\noindent Texto-claro: \textbf{Eternity22}.
+
+\begin{becosemsaida}
+\begin{itemize}[leftmargin=1.4em,itemsep=2pt,topsep=2pt]
+  \item MD5 (\cmd{-m 0}) e MD4 (\cmd{-m 900}) com \texttt{rockyou} \emph{puro}:
+        sem resultado --- a senha é uma mutação, não uma palavra literal.
+  \item Máscara de força-bruta com 10 minúsculas
+        (\cmd{-a 3 ?l?l?l?l?l?l?l?l?l?l}): estimativa de $\approx 5$ dias mesmo
+        com \cmd{-O} --- inviável, abandonado (e a senha nem é toda minúscula).
+  \item Lista externa \emph{fortinet-2021} (SecLists): também sem resultado.
+  \item Só a combinação \textbf{MD4 + \texttt{rockyou} + regras} destravou.
+\end{itemize}
+\end{becosemsaida}
+
+%------------------------------- NIVEL 2 --------------------------------------
+\subsection{Nível 2 --- (Task 2)}
+
+\begin{table}[H]
+  \centering
+  \caption{Resumo do Nível 2.}
+  \label{tab:n2}
+  \begin{tabular}{l l >{\ttfamily}c l l}
+    \hline
+    \textbf{Hash (abrev.)} & \textbf{Algoritmo} & \textbf{-m} & \textbf{Ataque} & \textbf{Texto-claro} \\
+    \hline
+    F09E\ldots 0C85          & SHA-256      & 1400 & dicionário + regras   & \texttt{paule} \\
+    1DFE\ldots CC1B          & NTLM         & 1000 & dicionário + regras   & \texttt{n63umy8lkf4i} \\
+    \$6\$\ldots As02.        & sha512crypt  & 1800 & dicionário (6 chars)  & \texttt{waka99} \\
+    e5d8\ldots 56d6 : sal    & HMAC-SHA1    & 160  & dicionário + regras   & \texttt{481616481616} \\
+    \hline
+  \end{tabular}
+\end{table}
+
+\subsubsection{\#1 --- SHA-256 (com regras)}
+Hash de 64 hex: \cmd{F09EDCB1FCEFC6DFB23DC3505A882655FF77375ED8AA2D1C13F640FCCC2D0C85}
+(SHA-256, \cmd{-m 1400}). O \texttt{rockyou} puro não encontra; a senha é uma
+mutação, quebrada com regras.
+
+\begin{lstlisting}[language=bash,caption={SHA-256 com dicionário + regras.}]
+hashcat -m 1400 -a 0 t2_1.txt /usr/share/wordlists/rockyou.txt \
+        -r /usr/share/hashcat/rules/best66.rule
+\end{lstlisting}
+\noindent Texto-claro: \textbf{paule}.
+
+\subsubsection{\#2 --- NTLM}
+Hash de 32 hex: \cmd{1DFECA0C002AE40B8619ECF94819CC1B}. O \texttt{hashid} retorna
+uma lista extensa (MD5, MD4, \emph{Double MD5}, LM, NTLM\ldots). Testando os
+candidatos em ordem, todos falham até \textbf{NTLM} (\cmd{-m 1000}), que quebra.
+NTLM é o hash de senhas do Windows.
+
+\begin{lstlisting}[language=bash,caption={NTLM com dicionário + regras.}]
+hashcat -m 1000 -a 0 t2_2.txt /usr/share/wordlists/rockyou.txt \
+        -r /usr/share/hashcat/rules/best66.rule
+\end{lstlisting}
+\noindent Texto-claro: \textbf{n63umy8lkf4i}.
+
+\begin{becosemsaida}
+Candidatos testados antes do NTLM, todos sem sucesso:
+\begin{itemize}[leftmargin=1.4em,itemsep=2pt,topsep=2pt]
+  \item MD5 (\cmd{-m 0}) e MD4 (\cmd{-m 900}) --- com \cmd{-O} e regras.
+  \item \emph{Double MD5} (\cmd{-m 2600}) e LM (\cmd{-m 3000}).
+  \item \emph{Lotus Notes/Domino 5} (\cmd{-m 8600}): estimativa de $\approx 30$
+        min --- descartado por custo/benefício.
+\end{itemize}
+\end{becosemsaida}
+
+\subsubsection{\#3 --- sha512crypt (\$6\$)}
+Hash no formato \cmd{$6$<sal>$<hash>}:
+\begin{lstlisting}[style=output]
+$6$aReallyHardSalt$6WKUTqzq.UQQmrm0p/T7MPpMbGNnzXPMAXi4bJMl9be.cfi3/qxIf.hsGpS41BqMhSrHVXgMpdjS6xeKZAs02.
+\end{lstlisting}
+O prefixo \cmd{$6$} identifica \texttt{sha512crypt} (\cmd{-m 1800}), o esquema do
+\cmd{/etc/shadow} moderno; o sal (\cmd{aReallyHardSalt}) já está embutido no
+próprio hash, sem necessidade de informá-lo à parte. Por ser um algoritmo com
+milhares de iterações (muito lento), o \texttt{rockyou} foi filtrado para
+palavras alfanuméricas de \textbf{6 caracteres}; mesmo assim a quebra levou
+$\approx 10$ minutos.
+
+\begin{lstlisting}[language=bash,caption={Filtragem por 6 caracteres e quebra do sha512crypt.}]
+grep -xE '[A-Za-z0-9]{6}' /usr/share/wordlists/rockyou.txt > words6.txt
+hashcat -m 1800 -a 0 t2_3.txt words6.txt -O
+\end{lstlisting}
+\noindent Texto-claro: \textbf{waka99}.
+
+\subsubsection{\#4 --- HMAC-SHA1 (chave = sal)}
+Par \cmd{hash:sal}: \cmd{e5d8870e5bdd26602cab8dbe07a942c8669e56d6:tryhackme}. O
+\texttt{hashid} sugere a família SHA-1. A questão é \emph{como} o sal entra: após
+descartar as concatenações simples (senha+sal e sal+senha), o hash corresponde a
+\textbf{HMAC-SHA1 com o sal como chave} (\cmd{-m 160}).
+
+\begin{lstlisting}[language=bash,caption={HMAC-SHA1 (modo 160) com o sal como chave.}]
+hashcat -m 160 -a 0 t2_4.txt /usr/share/wordlists/rockyou.txt \
+        -r /usr/share/hashcat/rules/best66.rule
+\end{lstlisting}
+\noindent Texto-claro: \textbf{481616481616}.
+
+\begin{becosemsaida}
+\begin{itemize}[leftmargin=1.4em,itemsep=2pt,topsep=2pt]
+  \item \cmd{-m 110} --- \texttt{sha1(senha.sal)}: sem resultado.
+  \item \cmd{-m 120} --- \texttt{sha1(sal.senha)}: sem resultado.
+  \item \cmd{-m 160} --- \texttt{HMAC-SHA1(chave = sal)}: correspondência.
+\end{itemize}
+\emph{Lição:} com sal, não basta o algoritmo-base --- é preciso descobrir o
+esquema de combinação (concatenação vs.\ HMAC, e a ordem/chave).
+\end{becosemsaida}
+
+%--------------------------- HASHES ADICIONAIS --------------------------------
+\subsection{Hashes Adicionais (exercício complementar)}
+
+Conjunto extra proposto como prática, aplicando o mesmo fluxo. Alguns vêm com
+\textbf{dica de formato}, o que favorece o ataque por \emph{máscara}.
+
+\begin{table}[H]
+  \centering
+  \caption{Resumo dos hashes adicionais.}
+  \label{tab:add}
+  \begin{tabular}{l l >{\ttfamily}c l l}
+    \hline
+    \textbf{Hash (abrev.)} & \textbf{Algoritmo} & \textbf{-m} & \textbf{Ataque} & \textbf{Texto-claro} \\
+    \hline
+    482c\ldots 1e38        & MD5       & 0    & dicionário  & \texttt{password123} \\
+    861c\ldots 5228        & SHA-1     & 100  & dicionário  & \texttt{easy} \\
+    4149\ldots 4099        & MD4       & 900  & máscara     & \texttt{0ffs3c} \\
+    cdeb\ldots 5875 : sal  & HMAC-SHA1 & 160  & dicionário  & \texttt{ovelha} \\
+    362f\ldots 2912        & SHA-256   & 1400 & máscara     & \texttt{sawctf} \\
+    \hline
+  \end{tabular}
+\end{table}
+
+\subsubsection{Add \#1 --- MD5}
+\cmd{482c811da5d5b4bc6d497ffa98491e38} (MD5, \cmd{-m 0}).
+\begin{lstlisting}[language=bash]
+hashcat -m 0 -a 0 add1.txt /usr/share/wordlists/rockyou.txt
+\end{lstlisting}
+\noindent Texto-claro: \textbf{password123}.
+
+\subsubsection{Add \#2 --- SHA-1}
+\cmd{861c4f67e887dec85292d36ab05cd7a1a7275228} (SHA-1, \cmd{-m 100}).
+\begin{lstlisting}[language=bash]
+hashcat -m 100 -a 0 add2.txt /usr/share/wordlists/rockyou.txt
+\end{lstlisting}
+\noindent Texto-claro: \textbf{easy}.
+
+\subsubsection{Add \#3 --- MD4 (máscara)}
+\cmd{4149c5cc4c378444d116d65ad5ba4099}, com dica ``\emph{apenas letras e números,
+6 caracteres}''. Isso pede um ataque de \textbf{máscara} (\cmd{-a 3}) com um
+\emph{charset} customizado que una dígitos, maiúsculas e minúsculas
+(\cmd{-1 ?d?u?l}). A máscara MD5 esgota sem achar; o algoritmo correto é
+\textbf{MD4} (\cmd{-m 900}).
+\begin{lstlisting}[language=bash,caption={Máscara de 6 posições (?d/?u/?l) sobre MD4.}]
+hashcat -m 900 -a 3 add3.txt -1 ?d?u?l ?1?1?1?1?1?1
+\end{lstlisting}
+\noindent Texto-claro: \textbf{0ffs3c}.
+
+\begin{becosemsaida}
+A mesma máscara sobre MD5 (\cmd{-m 0}) esgotou o espaço sem correspondência.
+\end{becosemsaida}
+
+\subsubsection{Add \#4 --- HMAC-SHA1}
+Par \cmd{cdeb746ec095149627348b61d4140fc58b745875:satech}, com dica explícita
+\textbf{HMAC-SHA1} (\cmd{-m 160}, sal como chave).
+\begin{lstlisting}[language=bash]
+hashcat -m 160 -a 0 add4.txt /usr/share/wordlists/rockyou.txt
+\end{lstlisting}
+\noindent Texto-claro: \textbf{ovelha}.
+
+\subsubsection{Add \#5 --- SHA-256 (máscara)}
+\cmd{362fda2183b7ac73400a83f6ab2c359451e48adf6c3d46a2963ee2abdf852912} (64 hex,
+SHA-256, \cmd{-m 1400}), com dica ``\emph{minúsculas e números, 6 caracteres}''.
+O \emph{charset} customizado restringe-se a \cmd{?d?l}, o que torna a máscara
+pequena e rápida.
+\begin{lstlisting}[language=bash,caption={Máscara restrita a minúsculas e dígitos sobre SHA-256.}]
+hashcat -m 1400 -a 3 add5.txt -1 ?d?l ?1?1?1?1?1?1
+\end{lstlisting}
+\noindent Texto-claro: \textbf{sawctf}.
+
+%============================= 2.7 CONCLUSAO ====================================
+\section{Conclusão}
+O desafio reforça que a etapa decisiva do \emph{cracking} é a
+\textbf{identificação} correta do algoritmo. O segundo fator é a \textbf{escolha da estratégia de ataque}
+segundo o custo do algoritmo e o que se sabe da senha: dicionário direto para
+palavras comuns; dicionário com \textbf{regras} para mutações
+(\emph{Eternity22}, \emph{paule}); \textbf{máscara} quando há dica de formato
+(\emph{0ffs3c}, \emph{sawctf}); e, para algoritmos lentos (\texttt{bcrypt},
+\texttt{sha512crypt}), \textbf{redução prévia do dicionário} por comprimento para
+tornar a quebra viável. Por fim, hashes com \textbf{sal} exigem descobrir o
+esquema de combinação (concatenação vs.\ HMAC), como no caso HMAC-SHA1 (modo
+160). Por fim, todos os 14 hashes, 5 do Nível 1, 4 do Nível 2 e 5 adicionais, foram
+recuperados.
+
+%============================= 2.8 REFERENCIAS ==================================
+\section{Referências}
+\begin{itemize}[leftmargin=1.5em]
+  \item TryHackMe --- Sala \emph{Crack The Hash} ---
+        \url{https://tryhackme.com/room/crackthehash}
+  \item hashcat --- \emph{example hashes} (identificação de modos) ---
+        \url{https://hashcat.net/wiki/doku.php?id=example_hashes}
+  \item hashcat --- documentação (Kali Tools) ---
+        \url{https://www.kali.org/tools/hashcat/}
+  \item CyberChef (função \emph{Magic}) ---
+        \url{https://gchq.github.io/CyberChef/}
+  \item SecLists --- \emph{Password lists} ---
+        \url{https://github.com/danielmiessler/SecLists}
+\end{itemize}
+
+\end{document}

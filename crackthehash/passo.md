@@ -1,5 +1,7 @@
 # CRACK THE HASH
 
+https://tryhackme.com/room/crackthehash
+
 ## Task1 - 1
 
 Hash: 48bb6e862e54f2a795ffc4e541caed4d
@@ -284,6 +286,7 @@ salt: eaReallyHardSalt
   - o salt já está no hash
   - daria horas
   - filtrei o rockyou por palavras de 6 digitos
+  - ainda sim demorou quase 10 minutos pra rodar
 
 ```
 grep -xE '[A-Za-z0-9]{6}' /usr/share/wordlists/rockyou.txt > words6.txt
