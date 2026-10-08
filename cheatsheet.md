@@ -47,6 +47,53 @@ feroxbuster -u http://<IP> -w /usr/share/wordlists/dirb/common.txt
 
 Status codes úteis: `200` (existe), `301/302` (redirect/dir), `403` (existe mas bloqueado).
 
+### Fuzzing de diretórios com ffuf (lab ffuf-fuzzlab)
+
+Ambiente de treino em Docker:
+```bash
+docker run -d -p 8000:80 robertovrf/ffuf-fuzzlab:1.0
+# servidor web em http://127.0.0.1:8000
+# wordlist dos exercícios: disponível no material da disciplina (wordlist.txt)
+```
+
+**1. Fuzzing básico de diretórios** — `FUZZ` é o ponto onde cada palavra da wordlist é injetada:
+```bash
+ffuf -w wordlist.txt -u http://127.0.0.1:8000/FUZZ
+```
+Repare: sem filtro, a saída mistura acertos com muito ruído (404s, respostas vazias).
+
+**2. Filtrar só o que existe de verdade** — `-mc` = *match code* (mantém só os status indicados):
+```bash
+ffuf -w wordlist.txt -u http://127.0.0.1:8000/FUZZ -mc 200
+```
+Conte quantos diretórios/arquivos sobraram depois do filtro.
+
+**3. Fuzzing recursivo** — entra nos diretórios achados e fuzza dentro deles:
+```bash
+ffuf -w wordlist.txt -u http://127.0.0.1:8000/FUZZ -recursion -recursion-depth 2
+```
+- `-recursion` = segue automaticamente os diretórios encontrados
+- `-recursion-depth 2` = limita a quantos níveis descer
+- Compare com o passo anterior: apareceu conteúdo novo escondido?
+
+**4. Fuzzing por extensão de arquivo** — `-e` anexa cada extensão a cada palavra:
+```bash
+ffuf -w wordlist.txt -u http://127.0.0.1:8000/FUZZ -e .php,.txt,.sql,.json
+```
+Útil para achar `backup.sql`, `config.php`, `notes.txt`, dumps de banco etc.
+
+Filtros complementares (reduzir ruído):
+```bash
+-mc 200,301,302    # match: só esses status
+-fc 404            # filter code: esconde esses status
+-fs 0              # filter size: esconde respostas de tamanho 0
+- fw / -fl         # filtra por nº de palavras / linhas
+```
+
+**Reflexão:** arquivos como `.sql`, `.bak`, `config.*` ou diretórios `/admin`, `/backup` não deveriam estar expostos em produção — vazam credenciais, estrutura do banco e código-fonte, abrindo caminho para comprometer o servidor real.
+
+Docs: https://github.com/ffuf/ffuf
+
 ---
 
 ## 3. File Upload → Reverse Shell
