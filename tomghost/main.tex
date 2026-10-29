@@ -208,10 +208,26 @@ PORT     STATE SERVICE    VERSION
 8080/tcp open  http       Apache Tomcat 9.0.30
 \end{lstlisting}
 
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\linewidth]{nmap.png}
+  \caption{Varreduras Nmap: quatro portas abertas e detecção de versão
+  confirmando OpenSSH 7.2p2, AJP13 (8009) e Apache Tomcat 9.0.30 (8080).}
+  \label{fig:nmap}
+\end{figure}
+
 \subsection{Enumeração web}
 A enumeração de \texttt{http://<TARGET\_IP>:8080/} com Gobuster só encontra as
 aplicações padrão do Tomcat; o \emph{manager} e o \emph{host-manager} exigem
 autenticação (403) e nenhum conteúdo útil aparece.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.9\linewidth]{tomcatserver.png}
+  \caption{Página inicial padrão do Apache Tomcat 9.0.30 em
+  \texttt{http://<TARGET\_IP>:8080/}.}
+  \label{fig:tomcatserver}
+\end{figure}
 
 \begin{lstlisting}[language=bash,caption={Enumeração de diretórios com Gobuster.}]
 gobuster dir -u http://<TARGET_IP>:8080 -w /usr/share/wordlists/dirb/common.txt -x php,txt,html
@@ -223,6 +239,14 @@ examples      (Status: 302) [--> /examples/]
 host-manager  (Status: 302) [--> /host-manager/]
 manager       (Status: 302) [--> /manager/]
 \end{lstlisting}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\linewidth]{gobuster.png}
+  \caption{Gobuster na porta 8080: apenas as aplicações padrão do Tomcat
+  (\texttt{docs}, \texttt{examples}, \texttt{manager}, \texttt{host-manager}).}
+  \label{fig:gobuster}
+\end{figure}
 
 \begin{becosemsaida}
 \begin{itemize}[leftmargin=1.4em,itemsep=2pt,topsep=2pt]
@@ -257,6 +281,14 @@ claro} (senha mascarada conforme a metodologia):
 </description>
 \end{lstlisting}
 
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\linewidth]{user_extraction.png}
+  \caption{\emph{Exploit} Ghostcat lendo \texttt{/WEB-INF/web.xml} e expondo a
+  credencial de \texttt{skyfuck} no campo \texttt{<description>}.}
+  \label{fig:user_extraction}
+\end{figure}
+
 \subsection{Acesso SSH como skyfuck}
 As credenciais vazadas autenticam diretamente no SSH. O \emph{home} de
 \texttt{skyfuck} contém dois artefatos de interesse: um arquivo \textbf{cifrado}
@@ -266,6 +298,14 @@ As credenciais vazadas autenticam diretamente no SSH. O \emph{home} de
 ssh skyfuck@<TARGET_IP>
 ls -latr        # -> credential.pgp (cifrado) e tryhackme.asc (chave privada PGP)
 \end{lstlisting}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\linewidth]{ssh.png}
+  \caption{Autenticação SSH como \texttt{skyfuck} usando a credencial vazada no
+  \texttt{web.xml} (Ubuntu 16.04).}
+  \label{fig:ssh}
+\end{figure}
 
 \subsection{Quebra da passphrase da chave PGP}
 A chave privada é protegida por \emph{passphrase}. Converte-se a chave para um
@@ -277,6 +317,14 @@ gpg2john tryhackme.asc > hash_private_key.txt        # -> <HASH>
 john hash_private_key.txt --wordlist=/usr/share/wordlists/rockyou.txt
 # john --show  ->  passphrase: <PASSWORD>
 \end{lstlisting}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\linewidth]{john_the_riper.png}
+  \caption{\texttt{gpg2john} converte a chave privada e o John quebra a
+  \emph{passphrase} com a \emph{wordlist} \emph{rockyou}.}
+  \label{fig:john}
+\end{figure}
 
 \subsection{Decifragem da credencial}
 Com a \emph{passphrase}, importa-se a chave e decifra-se \texttt{credential.pgp},
@@ -297,6 +345,15 @@ De posse da credencial decifrada, autentica-se via SSH como \texttt{merlin}, cuj
 ssh merlin@<TARGET_IP>
 cat user.txt        # -> <FLAG>
 \end{lstlisting}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\linewidth]{root_flag.png}
+  \caption{Decifragem de \texttt{credential.pgp} revelando as credenciais de
+  \texttt{merlin} e, à esquerda, o acesso SSH como \texttt{merlin} com leitura da
+  \emph{flag} de usuário.}
+  \label{fig:merlin}
+\end{figure}
 
 %======================== 2.7 ESCALADA DE PRIVILEGIOS ==========================
 \section{Escalada de Privilégios}
