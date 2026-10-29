@@ -1,3 +1,5 @@
+https://tryhackme.com/room/tomghost
+
 # nmap
 
 nmap -T4 10.67.179.33       
